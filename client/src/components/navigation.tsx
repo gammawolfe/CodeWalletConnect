@@ -18,7 +18,7 @@ export function Navigation() {
   const navigationItems = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/api-docs", label: "API Docs" },
-    { href: "/integration", label: "Integration" },
+    { href: "/integrations", label: "Integrations" },
     { href: "/monitoring", label: "Monitoring" },
   ];
 
