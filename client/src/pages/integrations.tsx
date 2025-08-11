@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, CheckCircle, Settings, CreditCard, Webhook, Key, Globe } from "lucide-react";
 import { SiStripe, SiPaypal } from "react-icons/si";
+import { Navigation } from "@/components/navigation";
 
 export default function Integrations() {
   const [apiKeysVisible, setApiKeysVisible] = useState(false);
@@ -85,6 +86,7 @@ export default function Integrations() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navigation />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Integrations</h1>
