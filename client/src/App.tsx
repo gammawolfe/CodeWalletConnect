@@ -5,12 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "./lib/protected-route";
-import HomePage from "@/pages/home-page";
 import Dashboard from "@/pages/dashboard";
 import ApiDocs from "@/pages/api-docs";
-import Integrations from "@/pages/integrations";
+import SystemStatus from "@/pages/system-status";
 import Partners from "@/pages/partners";
-import Onboarding from "@/pages/onboarding";
 import Monitoring from "@/pages/monitoring";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
@@ -18,12 +16,11 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <ProtectedRoute path="/api-docs" component={ApiDocs} />
-      <ProtectedRoute path="/integrations" component={Integrations} />
       <ProtectedRoute path="/partners" component={Partners} />
-      <ProtectedRoute path="/onboarding" component={Onboarding} />
+      <ProtectedRoute path="/integrations" component={SystemStatus} />
+      <ProtectedRoute path="/api-docs" component={ApiDocs} />
       <ProtectedRoute path="/monitoring" component={Monitoring} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

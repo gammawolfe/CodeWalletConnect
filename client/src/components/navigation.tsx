@@ -16,12 +16,11 @@ export function Navigation() {
   const [location] = useLocation();
 
   const navigationItems = [
-    { href: "/dashboard", label: "Admin Dashboard" },
-    { href: "/partners", label: "Partner Management" },
-    { href: "/integrations", label: "App Integrations" },
-    { href: "/onboarding", label: "App Onboarding" },
-    { href: "/api-docs", label: "API Documentation" },
-    { href: "/monitoring", label: "System Monitoring" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/partners", label: "Partners" },
+    { href: "/integrations", label: "System Status" },
+    { href: "/api-docs", label: "API Docs" },
+    { href: "/monitoring", label: "Monitoring" },
   ];
 
   return (

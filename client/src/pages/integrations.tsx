@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 
 export default function Integrations() {
-  // Apps that consume PayFlow as their backend infrastructure
-  const consumerApps = [
+  // System status and external integrations monitoring
+  const systemIntegrations = [
     {
       name: "RoSaBank",
       type: "ROSCA Platform",
