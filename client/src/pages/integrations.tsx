@@ -7,12 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, Settings, CreditCard, Webhook, Key, Globe } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle, Settings, CreditCard, Webhook, Key, Globe, Copy, Eye, EyeOff } from "lucide-react";
 import { SiStripe, SiPaypal } from "react-icons/si";
 import { Navigation } from "@/components/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Integrations() {
   const [apiKeysVisible, setApiKeysVisible] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const { toast } = useToast();
 
   const paymentGateways = [
     {
@@ -84,6 +90,177 @@ export default function Integrations() {
     }
   };
 
+  const handleCopyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied to clipboard",
+      description: "The text has been copied to your clipboard.",
+    });
+  };
+
+  const handleGatewayConfig = (gatewayId: string) => {
+    setSelectedGateway(gatewayId);
+    setConfigModalOpen(true);
+  };
+
+  const StripeConfigModal = () => {
+    const [publishableKey, setPublishableKey] = useState('pk_test_••••••••••••••••••••••••••••••••');
+    const [secretKey, setSecretKey] = useState('sk_test_••••••••••••••••••••••••••••••••');
+    const [webhookSecret, setWebhookSecret] = useState('whsec_••••••••••••••••••••••••••••••••');
+
+    return (
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <SiStripe className="w-5 h-5" />
+            <span>Configure Stripe Integration</span>
+          </DialogTitle>
+          <DialogDescription>
+            Configure your Stripe payment gateway settings and API keys.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="publishable-key">Publishable Key</Label>
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id="publishable-key"
+                  value={publishableKey}
+                  onChange={(e) => setPublishableKey(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="pk_test_..."
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyToClipboard(publishableKey)}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Safe to use in client-side code. Used for tokenizing payment methods.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="secret-key">Secret Key</Label>
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id="secret-key"
+                  type={showSecretKey ? "text" : "password"}
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="sk_test_..."
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSecretKey(!showSecretKey)}
+                >
+                  {showSecretKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyToClipboard(secretKey)}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Keep this secret! Used for server-side API calls and webhooks.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="webhook-secret">Webhook Endpoint Secret</Label>
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id="webhook-secret"
+                  type={showSecretKey ? "text" : "password"}
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="whsec_..."
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyToClipboard(webhookSecret)}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Used to verify webhook signatures from Stripe.
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Test Mode Settings</Label>
+              <div className="flex items-center justify-between mt-2">
+                <div>
+                  <p className="text-sm text-gray-600">Enable test mode</p>
+                  <p className="text-xs text-gray-500">Use test API keys for development</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Webhook URL</Label>
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  value="https://api.payflow.dev/webhooks/stripe"
+                  readOnly
+                  className="bg-gray-50 font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyToClipboard("https://api.payflow.dev/webhooks/stripe")}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Configure this URL in your Stripe dashboard webhook settings.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={() => setConfigModalOpen(false)}>
+              Cancel
+            </Button>
+            <div className="space-x-2">
+              <Button variant="outline">
+                Test Connection
+              </Button>
+              <Button onClick={() => {
+                toast({
+                  title: "Configuration saved",
+                  description: "Stripe integration has been updated successfully.",
+                });
+                setConfigModalOpen(false);
+              }}>
+                Save Configuration
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
@@ -124,7 +301,11 @@ export default function Integrations() {
                             </div>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleGatewayConfig(gateway.id)}
+                        >
                           <Settings className="w-4 h-4 mr-2" />
                           Configure
                         </Button>
@@ -305,6 +486,11 @@ export default function Integrations() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Configuration Modal */}
+        <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
+          {selectedGateway === 'stripe' && <StripeConfigModal />}
+        </Dialog>
       </div>
     </div>
   );
