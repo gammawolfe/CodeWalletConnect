@@ -1,0 +1,92 @@
+# Prompt for an AI Node Code Builder — Payment Gateway Aggregator + Wallet Service
+
+**Goal:** Build a production-ready, extensible **Payment Gateway Aggregator** that exposes a **Wallet Management System** (HTTP API + SDKs) for third-party apps. Use Node.js + TypeScript and deliver incremental, tested, deployable artifacts. Focus on security, correctness (double-entry ledger), reliability (idempotency, retry, reconciliation), observability, and easy addition of new payment gateways.
+
+---
+
+## Context for the AI Builder
+You are an expert Node.js developer/engineer agent. Build a microservice-based system in TypeScript that exposes a RESTful (and optionally gRPC) Wallet API to third party apps. The system must integrate with multiple payment gateways through pluggable adapters, implement a strong immutable ledger with double-entry accounting, support OIDC-based third-party auth, provide SDKs (JS/TS + mobile guidance), and be production-ready (Docker, Kubernetes manifests, CI/CD). Deliver code, tests, infra manifests, OpenAPI spec, and documentation.
+
+---
+
+## Primary Requirements (must-have)
+1. **Core API** (REST, OpenAPI v3)
+   - Create wallet for a `user_id` (third-party app user).
+   - Get wallet balance and transaction history (pagination).
+   - Credit / Debit wallet (initiated by third-party apps or internal orchestrator).
+   - Transfer between wallets.
+   - Initiate external payout (withdraw to bank/card) via gateway adapters.
+   - Accept incoming gateway webhooks and reconcile them with ledger.
+   - Provide idempotency support for all money-moving endpoints.
+
+2. **Ledger**
+   - Immutable, auditable ledger with **double-entry** accounting:
+     - Every logical transaction creates two entries (debit, credit).
+     - Balance computed from ledger; no single mutable balance column as source of truth (optionally cache aggregated balance).
+   - Support ledger snapshots / partitioning for scale.
+
+3. **Gateway Integration Layer**
+   - Adapter interface + at least 2 sample adapters:
+     - `mock` adapter (for local dev/testing).
+     - `stripe`-like adapter (simulate or use official SDK but must be pluggable).
+   - Adapter responsibilities: create payment intent, capture, refund, webhook verification, and status mapping.
+
+4. **Transaction Orchestrator**
+   - Async orchestration via message queue (RabbitMQ recommended; Kafka acceptable).
+   - Orchestrator handles retries, timeouts, idempotency, status transitions, reconciliation tasks.
+
+5. **Auth & Third-Party Integration**
+   - Use **OIDC/OAuth2** for third-party apps (Keycloak recommended for local infra).
+   - Support server-to-server JWT auth and API keys for service subscriptions.
+
+6. **Security & Compliance**
+   - TLS for all endpoints.
+   - Secrets stored in a secret manager (HashiCorp Vault or cloud secret store).
+   - Do **not** store raw card PAN/CVV — delegate to gateways (PCI scope minimization).
+   - Webhook HMAC verification.
+   - Role-based access control (RBAC) for internal admin endpoints.
+
+7. **Testing**
+   - Unit tests, integration tests (DB + queue + adapters mocked), and end-to-end tests (API + mock gateway).
+   - Automated tests run in CI.
+
+8. **Observability**
+   - Structured logging (JSON), request/trace IDs.
+   - Metrics (Prometheus), tracing (OpenTelemetry).
+   - Alerts/health endpoints (`/health`, `/ready`, `/live`).
+
+9. **Infrastructure**
+   - Dockerfile(s), docker-compose for local dev.
+   - Kubernetes manifests (Deployment, Service, Ingress, Secrets) or Helm chart.
+   - GitHub Actions CI that builds, tests, lints, and optionally deploys to a staging cluster.
+
+10. **Documentation & SDKs**
+    - OpenAPI spec (YAML/JSON).
+    - Postman (or similar) collection.
+    - Minimal client SDK in TypeScript (npm package skeleton) and instructions for iOS/Android integration patterns (REST + webhooks).
+
+11. **Deliverables & Acceptance Tests**
+    - Working repo with code, scripts to run locally, tests passing.
+    - OpenAPI docs and example Postman requests.
+    - Example deployment manifests.
+    - README with architecture, design decisions, and how to add a new gateway.
+
+---
+
+## Recommended Tech Stack & Libraries
+| Layer | Recommended Tech |
+|-------|------------------|
+| **Language** | TypeScript (Node.js 20+) |
+| **Framework** | NestJS or Express (modular) |
+| **ORM** | Prisma (preferred) or TypeORM |
+| **Database** | PostgreSQL + Redis (for caching) |
+| **Queue/Event Bus** | RabbitMQ or Kafka |
+| **Auth** | Keycloak (OIDC), JWT, API keys |
+| **Logging** | pino or winston |
+| **Tracing** | OpenTelemetry |
+| **Testing** | Jest, supertest |
+| **Infra** | Docker, Kubernetes, GitHub Actions |
+
+---
+
+## Architecture & Folder Structure (example)
