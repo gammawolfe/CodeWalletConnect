@@ -1,10 +1,19 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth, requireAuth, requireApiKey } from "./auth";
+import { setupAuth, requireAuth } from "./auth";
+import { 
+  requireApiKey, 
+  requirePermission, 
+  validateWalletOwnership,
+  rateLimit,
+  generateApiKeyPair,
+  hashApiKey
+} from "./auth-api";
 import { walletService } from "./services/wallet";
 import { paymentGatewayService } from "./services/payment-gateway";
 import { storage } from "./storage";
 import { 
+  insertPartnerSchema,
   insertWalletSchema, 
   creditWalletSchema, 
   debitWalletSchema, 
@@ -79,149 +88,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Wallet management routes (require authentication)
-  app.post("/api/v1/wallets", requireAuth, async (req: any, res, next) => {
-    try {
-      const { currency, metadata } = insertWalletSchema.parse(req.body);
-      const wallet = await walletService.createWallet(
-        req.user.id, 
-        currency || 'USD', 
-        metadata
-      );
-      res.status(201).json(wallet);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // =====================================
+  // B2B Partner API Routes (API Key Auth)
+  // =====================================
 
-  app.get("/api/v1/wallets", requireAuth, async (req: any, res, next) => {
-    try {
-      const wallets = await storage.getWalletsByUserId(req.user.id);
-      res.json(wallets);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // Apply rate limiting to all API routes
+  app.use('/api/v1', rateLimit(1000)); // 1000 requests per minute
 
-  app.get("/api/v1/wallets/:id/balance", requireAuth, async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      
-      // Verify wallet belongs to user
-      const wallet = await storage.getWallet(id);
-      if (!wallet || wallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Wallet not found' });
+  // Partner Wallet Management
+  app.post("/api/v1/wallets", 
+    requireApiKey, 
+    requirePermission('wallets:write'), 
+    async (req: any, res, next) => {
+      try {
+        const walletData = insertWalletSchema.parse({
+          ...req.body,
+          partnerId: req.partner.id
+        });
+        
+        const wallet = await storage.createWallet(walletData);
+        res.status(201).json(wallet);
+      } catch (error) {
+        next(error);
       }
-
-      const balance = await walletService.getWalletBalance(id);
-      res.json(balance);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  app.get("/api/v1/wallets/:id/transactions", requireAuth, async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      const { limit = 50, offset = 0 } = req.query;
-      
-      // Verify wallet belongs to user
-      const wallet = await storage.getWallet(id);
-      if (!wallet || wallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Wallet not found' });
+  app.get("/api/v1/wallets", 
+    requireApiKey, 
+    requirePermission('wallets:read'), 
+    async (req: any, res, next) => {
+      try {
+        const wallets = await storage.getWalletsByPartnerId(req.partner.id);
+        res.json(wallets);
+      } catch (error) {
+        next(error);
       }
-
-      const transactions = await walletService.getTransactionHistory(
-        id, 
-        parseInt(limit as string), 
-        parseInt(offset as string)
-      );
-      res.json(transactions);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  // Transaction routes (require authentication)
-  app.post("/api/v1/wallets/:id/credit", requireAuth, async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      
-      // Verify wallet belongs to user
-      const wallet = await storage.getWallet(id);
-      if (!wallet || wallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Wallet not found' });
+  app.get("/api/v1/wallets/:id", 
+    requireApiKey, 
+    requirePermission('wallets:read'), 
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        res.json(req.wallet);
+      } catch (error) {
+        next(error);
       }
-
-      const data = creditWalletSchema.parse({ ...req.body, walletId: id });
-      const transaction = await walletService.creditWallet(data);
-      res.status(201).json(transaction);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  app.post("/api/v1/wallets/:id/debit", requireAuth, async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      
-      // Verify wallet belongs to user
-      const wallet = await storage.getWallet(id);
-      if (!wallet || wallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Wallet not found' });
+  app.get("/api/v1/wallets/:id/balance", 
+    requireApiKey, 
+    requirePermission('wallets:read'), 
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        const balance = await walletService.getWalletBalance(req.params.id);
+        res.json({ balance, currency: req.wallet.currency });
+      } catch (error) {
+        next(error);
       }
-
-      const data = debitWalletSchema.parse({ ...req.body, walletId: id });
-      const transaction = await walletService.debitWallet(data);
-      res.status(201).json(transaction);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  app.post("/api/v1/transfers", requireAuth, async (req: any, res, next) => {
-    try {
-      const data = transferSchema.parse(req.body);
-      
-      // Verify both wallets belong to user (or implement proper authorization)
-      const fromWallet = await storage.getWallet(data.fromWalletId);
-      const toWallet = await storage.getWallet(data.toWalletId);
-      
-      if (!fromWallet || fromWallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Source wallet not found' });
+  app.get("/api/v1/wallets/:id/transactions", 
+    requireApiKey, 
+    requirePermission('transactions:read'), 
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        const { limit = 50, offset = 0 } = req.query;
+        const transactions = await walletService.getTransactionHistory(
+          req.params.id, 
+          parseInt(limit as string), 
+          parseInt(offset as string)
+        );
+        res.json(transactions);
+      } catch (error) {
+        next(error);
       }
-      
-      if (!toWallet) {
-        return res.status(404).json({ message: 'Destination wallet not found' });
-      }
-
-      const transaction = await walletService.transferBetweenWallets(data);
-      res.status(201).json(transaction);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  // Payout routes (require authentication)
-  app.post("/api/v1/payouts", requireAuth, async (req: any, res, next) => {
-    try {
-      const data = payoutSchema.parse(req.body);
-      const gateway = req.body.gateway || 'stripe';
-      
-      // Verify wallet belongs to user
-      const wallet = await storage.getWallet(data.walletId);
-      if (!wallet || wallet.userId !== req.user.id) {
-        return res.status(404).json({ message: 'Wallet not found' });
+  // Find wallet by external ID (partner-specific)
+  app.get("/api/v1/wallets/external/:externalId", 
+    requireApiKey, 
+    requirePermission('wallets:read'), 
+    async (req: any, res, next) => {
+      try {
+        const { externalId } = req.params;
+        const wallet = await storage.getWalletByExternalId(req.partner.id, externalId);
+        
+        if (!wallet) {
+          return res.status(404).json({ error: 'Wallet not found' });
+        }
+        
+        res.json(wallet);
+      } catch (error) {
+        next(error);
       }
-
-      const payout = await paymentGatewayService.createPayout(gateway, data);
-      res.status(201).json(payout);
-    } catch (error) {
-      next(error);
     }
-  });
+  );
 
-  // Webhook endpoints (require API key or webhook signature)
+  // Transaction routes (API Key auth)
+  app.post("/api/v1/wallets/:id/credit", 
+    requireApiKey, 
+    requirePermission('transactions:write'), 
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        const data = creditWalletSchema.parse({ 
+          ...req.body, 
+          walletId: req.params.id 
+        });
+        const transaction = await walletService.creditWallet(data);
+        res.status(201).json(transaction);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.post("/api/v1/wallets/:id/debit", 
+    requireApiKey, 
+    requirePermission('transactions:write'), 
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        const data = debitWalletSchema.parse({ 
+          ...req.body, 
+          walletId: req.params.id 
+        });
+        const transaction = await walletService.debitWallet(data);
+        res.status(201).json(transaction);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.post("/api/v1/transfers", 
+    requireApiKey, 
+    requirePermission('transactions:write'), 
+    async (req: any, res, next) => {
+      try {
+        const data = transferSchema.parse(req.body);
+        
+        // Verify both wallets belong to the partner
+        const fromWallet = await storage.getWallet(data.fromWalletId);
+        const toWallet = await storage.getWallet(data.toWalletId);
+        
+        if (!fromWallet || fromWallet.partnerId !== req.partner.id) {
+          return res.status(404).json({ error: 'Source wallet not found or not accessible' });
+        }
+        
+        if (!toWallet || toWallet.partnerId !== req.partner.id) {
+          return res.status(404).json({ error: 'Destination wallet not found or not accessible' });
+        }
+
+        const transaction = await walletService.transferBetweenWallets(data);
+        res.status(201).json(transaction);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  // Payout routes (API Key auth)
+  app.post("/api/v1/payouts", 
+    requireApiKey, 
+    requirePermission('payouts:write'), 
+    async (req: any, res, next) => {
+      try {
+        const data = payoutSchema.parse(req.body);
+        const gateway = req.body.gateway || 'stripe';
+        
+        // Verify wallet belongs to partner
+        const wallet = await storage.getWallet(data.walletId);
+        if (!wallet || wallet.partnerId !== req.partner.id) {
+          return res.status(404).json({ error: 'Wallet not found or not accessible' });
+        }
+
+        const payout = await paymentGatewayService.createPayout(gateway, data);
+        res.status(201).json(payout);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  // =====================================
+  // Webhook Endpoints
+  // =====================================
+
   app.post("/api/v1/webhooks/stripe", async (req, res, next) => {
     try {
       const signature = req.headers['stripe-signature'] as string;
@@ -236,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/v1/webhooks/mock", requireApiKey, async (req, res, next) => {
+  app.post("/api/v1/webhooks/mock", async (req, res, next) => {
     try {
       const result = await paymentGatewayService.handleWebhook(
         'mock', 
@@ -249,12 +311,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin/service routes (require API key)
-  app.get("/api/v1/admin/wallets", requireApiKey, async (req, res, next) => {
+  // =====================================
+  // Admin Routes (Web App Authentication)
+  // =====================================
+
+  // Partner Management (for PayFlow admin interface)
+  app.get("/api/admin/partners", requireAuth, async (req, res, next) => {
     try {
-      // Admin endpoint to list all wallets
-      // In a real implementation, add proper pagination and filtering
-      res.json({ message: 'Admin endpoint - not implemented in demo' });
+      const partners = await storage.getPartners();
+      res.json(partners);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/partners", requireAuth, async (req, res, next) => {
+    try {
+      const partnerData = insertPartnerSchema.parse(req.body);
+      const partner = await storage.createPartner(partnerData);
+      res.status(201).json(partner);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/admin/partners/:id/status", requireAuth, async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const partner = await storage.updatePartnerStatus(id, status);
+      res.json(partner);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // API Key Management (for PayFlow admin interface)
+  app.get("/api/admin/partners/:partnerId/api-keys", requireAuth, async (req, res, next) => {
+    try {
+      const { partnerId } = req.params;
+      const apiKeys = await storage.getApiKeysByPartnerId(partnerId);
+      
+      // Don't return the actual key hashes for security
+      const sanitizedKeys = apiKeys.map(key => ({
+        ...key,
+        keyHash: undefined
+      }));
+      
+      res.json(sanitizedKeys);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/partners/:partnerId/api-keys", requireAuth, async (req, res, next) => {
+    try {
+      const { partnerId } = req.params;
+      const { environment, permissions } = req.body;
+      
+      // Generate new API key pair
+      const { publicKey, secretKey, keyHash } = generateApiKeyPair(partnerId, environment);
+      
+      // Store hashed version in database
+      const apiKey = await storage.createApiKey({
+        partnerId,
+        keyHash,
+        environment: environment as any,
+        permissions: permissions || ['wallets:read', 'wallets:write', 'transactions:read']
+      });
+      
+      // Return the keys (only time the secret is visible)
+      res.status(201).json({
+        ...apiKey,
+        publicKey,
+        secretKey,
+        keyHash: undefined // Don't return the hash
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/admin/api-keys/:keyId", requireAuth, async (req, res, next) => {
+    try {
+      const { keyId } = req.params;
+      await storage.deactivateApiKey(keyId);
+      res.json({ message: 'API key deactivated' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // System monitoring (for PayFlow admin interface)
+  app.get("/api/admin/system/stats", requireAuth, async (req, res, next) => {
+    try {
+      // Get system statistics
+      const partners = await storage.getPartners();
+      const activePartners = partners.filter(p => p.status === 'approved').length;
+      
+      res.json({
+        totalPartners: partners.length,
+        activePartners,
+        pendingPartners: partners.filter(p => p.status === 'pending').length,
+        suspendedPartners: partners.filter(p => p.status === 'suspended').length,
+        // Add more metrics as needed
+      });
     } catch (error) {
       next(error);
     }

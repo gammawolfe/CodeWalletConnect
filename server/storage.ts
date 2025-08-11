@@ -1,5 +1,12 @@
-import { users, wallets, transactions, ledgerEntries, gatewayTransactions } from "@shared/schema";
-import type { User, InsertUser, Wallet, InsertWallet, Transaction, InsertTransaction, LedgerEntry, GatewayTransaction } from "@shared/schema";
+import { users, partners, apiKeys, wallets, transactions, ledgerEntries, gatewayTransactions } from "@shared/schema";
+import type { 
+  User, InsertUser, 
+  Partner, InsertPartner,
+  ApiKey, InsertApiKey,
+  Wallet, InsertWallet, 
+  Transaction, InsertTransaction, 
+  LedgerEntry, GatewayTransaction 
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import session from "express-session";
@@ -9,16 +16,31 @@ import { pool } from "./db";
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
-  // User operations
+  // Admin user operations (for PayFlow admin interface)
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUserStripeInfo(userId: string, customerId: string, subscriptionId?: string): Promise<User>;
 
-  // Wallet operations
+  // Partner operations (B2B clients)
+  getPartner(id: string): Promise<Partner | undefined>;
+  getPartnerByName(name: string): Promise<Partner | undefined>;
+  getPartners(): Promise<Partner[]>;
+  createPartner(partner: InsertPartner): Promise<Partner>;
+  updatePartnerStatus(id: string, status: string): Promise<Partner>;
+  updatePartnerStripeAccount(id: string, stripeAccountId: string): Promise<Partner>;
+
+  // API Key operations (for partner authentication)
+  getApiKey(keyHash: string): Promise<ApiKey | undefined>;
+  getApiKeysByPartnerId(partnerId: string): Promise<ApiKey[]>;
+  createApiKey(apiKey: InsertApiKey): Promise<ApiKey>;
+  updateApiKeyLastUsed(id: string): Promise<void>;
+  deactivateApiKey(id: string): Promise<void>;
+
+  // Wallet operations (partner-scoped)
   getWallet(id: string): Promise<Wallet | undefined>;
-  getWalletsByUserId(userId: string): Promise<Wallet[]>;
+  getWalletsByPartnerId(partnerId: string): Promise<Wallet[]>;
+  getWalletByExternalId(partnerId: string, externalWalletId: string): Promise<Wallet | undefined>;
   createWallet(wallet: InsertWallet): Promise<Wallet>;
   getWalletBalance(walletId: string): Promise<string>;
   
@@ -87,17 +109,77 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserStripeInfo(userId: string, customerId: string, subscriptionId?: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ 
-        stripeCustomerId: customerId,
-        stripeSubscriptionId: subscriptionId,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
+  // Partner operations
+  async getPartner(id: string): Promise<Partner | undefined> {
+    const [partner] = await db.select().from(partners).where(eq(partners.id, id));
+    return partner || undefined;
+  }
+
+  async getPartnerByName(name: string): Promise<Partner | undefined> {
+    const [partner] = await db.select().from(partners).where(eq(partners.name, name));
+    return partner || undefined;
+  }
+
+  async getPartners(): Promise<Partner[]> {
+    return await db.select().from(partners);
+  }
+
+  async createPartner(partner: InsertPartner): Promise<Partner> {
+    const [newPartner] = await db
+      .insert(partners)
+      .values(partner)
       .returning();
-    return user;
+    return newPartner;
+  }
+
+  async updatePartnerStatus(id: string, status: string): Promise<Partner> {
+    const [partner] = await db
+      .update(partners)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(partners.id, id))
+      .returning();
+    return partner;
+  }
+
+  async updatePartnerStripeAccount(id: string, stripeAccountId: string): Promise<Partner> {
+    const [partner] = await db
+      .update(partners)
+      .set({ stripeAccountId, updatedAt: new Date() })
+      .where(eq(partners.id, id))
+      .returning();
+    return partner;
+  }
+
+  // API Key operations
+  async getApiKey(keyHash: string): Promise<ApiKey | undefined> {
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.keyHash, keyHash));
+    return apiKey || undefined;
+  }
+
+  async getApiKeysByPartnerId(partnerId: string): Promise<ApiKey[]> {
+    return await db.select().from(apiKeys).where(eq(apiKeys.partnerId, partnerId));
+  }
+
+  async createApiKey(apiKey: InsertApiKey): Promise<ApiKey> {
+    const [newApiKey] = await db
+      .insert(apiKeys)
+      .values(apiKey)
+      .returning();
+    return newApiKey;
+  }
+
+  async updateApiKeyLastUsed(id: string): Promise<void> {
+    await db
+      .update(apiKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(apiKeys.id, id));
+  }
+
+  async deactivateApiKey(id: string): Promise<void> {
+    await db
+      .update(apiKeys)
+      .set({ isActive: false })
+      .where(eq(apiKeys.id, id));
   }
 
   async getWallet(id: string): Promise<Wallet | undefined> {
@@ -105,8 +187,21 @@ export class DatabaseStorage implements IStorage {
     return wallet || undefined;
   }
 
-  async getWalletsByUserId(userId: string): Promise<Wallet[]> {
-    return await db.select().from(wallets).where(eq(wallets.userId, userId));
+  async getWalletsByPartnerId(partnerId: string): Promise<Wallet[]> {
+    return await db.select().from(wallets).where(eq(wallets.partnerId, partnerId));
+  }
+
+  async getWalletByExternalId(partnerId: string, externalWalletId: string): Promise<Wallet | undefined> {
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(
+        and(
+          eq(wallets.partnerId, partnerId),
+          eq(wallets.externalWalletId, externalWalletId)
+        )
+      );
+    return wallet || undefined;
   }
 
   async createWallet(wallet: InsertWallet): Promise<Wallet> {

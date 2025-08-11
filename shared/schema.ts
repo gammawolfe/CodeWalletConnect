@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, timestamp, uuid, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, timestamp, uuid, jsonb, pgEnum, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -10,23 +10,57 @@ export const transactionTypeEnum = pgEnum('transaction_type', ['credit', 'debit'
 export const walletStatusEnum = pgEnum('wallet_status', ['active', 'suspended', 'closed']);
 export const paymentGatewayEnum = pgEnum('payment_gateway', ['stripe', 'mock']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['debit', 'credit']);
+export const partnerStatusEnum = pgEnum('partner_status', ['pending', 'approved', 'suspended', 'rejected']);
+export const apiKeyEnvironmentEnum = pgEnum('api_key_environment', ['sandbox', 'production']);
 
-// Users table
+// Admin users table (for PayFlow admin interface)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
+  role: text("role").notNull().default('admin'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Wallets table
+// Partners table (B2B clients like RoSaBank)
+export const partners = pgTable("partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  companyName: text("company_name").notNull(),
+  email: text("email").notNull(),
+  contactPerson: text("contact_person").notNull(),
+  businessType: text("business_type").notNull(),
+  status: partnerStatusEnum("status").notNull().default('pending'),
+  webhookUrl: text("webhook_url"),
+  stripeAccountId: text("stripe_account_id"), // Partner's own Stripe Connect account
+  settings: jsonb("settings"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// API Keys table (for partner authentication)
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  keyHash: text("key_hash").notNull(), // Hashed API key for security
+  environment: apiKeyEnvironmentEnum("environment").notNull(),
+  permissions: text("permissions").array().notNull().default(['wallets:read', 'wallets:write', 'transactions:read']),
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Wallets table (now partner-scoped, not user-scoped)
 export const wallets = pgTable("wallets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  partnerId: varchar("partner_id").notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  externalUserId: text("external_user_id"), // Partner's user ID in their system
+  externalWalletId: text("external_wallet_id"), // Partner's wallet ID in their system
+  name: text("name"), // Human-readable wallet name
   currency: text("currency").notNull().default('USD'),
   status: walletStatusEnum("status").notNull().default('active'),
   metadata: jsonb("metadata"),
@@ -81,14 +115,22 @@ export const gatewayTransactions = pgTable("gateway_transactions", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const partnersRelations = relations(partners, ({ many }) => ({
   wallets: many(wallets),
+  apiKeys: many(apiKeys),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  partner: one(partners, {
+    fields: [apiKeys.partnerId],
+    references: [partners.id],
+  }),
 }));
 
 export const walletsRelations = relations(wallets, ({ one, many }) => ({
-  user: one(users, {
-    fields: [wallets.userId],
-    references: [users.id],
+  partner: one(partners, {
+    fields: [wallets.partnerId],
+    references: [partners.id],
   }),
   ledgerEntries: many(ledgerEntries),
   transactionsFrom: many(transactions, {
@@ -131,8 +173,29 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
+export const insertPartnerSchema = createInsertSchema(partners).pick({
+  name: true,
+  companyName: true,
+  email: true,
+  contactPerson: true,
+  businessType: true,
+  webhookUrl: true,
+  settings: true,
+  metadata: true,
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).pick({
+  partnerId: true,
+  environment: true,
+  permissions: true,
+  expiresAt: true,
+});
+
 export const insertWalletSchema = createInsertSchema(wallets).pick({
-  userId: true,
+  partnerId: true,
+  externalUserId: true,
+  externalWalletId: true,
+  name: true,
   currency: true,
   metadata: true,
 });
@@ -187,6 +250,10 @@ export const payoutSchema = z.object({
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type InsertPartner = z.infer<typeof insertPartnerSchema>;
+export type Partner = typeof partners.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertWallet = z.infer<typeof insertWalletSchema>;
 export type Wallet = typeof wallets.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;

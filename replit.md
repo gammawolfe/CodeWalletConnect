@@ -2,23 +2,29 @@
 
 PayFlow is a production-ready Payment Gateway Aggregator and Wallet Management System built with Node.js and TypeScript. The system provides a comprehensive REST API for wallet operations, implements double-entry accounting principles, and supports multiple payment gateways through a pluggable adapter architecture. It features a modern React frontend with shadcn/ui components and includes robust authentication, transaction orchestration, and compliance features.
 
-## Recent Development: B2B Infrastructure Transformation
+## Recent Development: Complete B2B Infrastructure Architecture
 
-PayFlow has been transformed from a B2C + B2B platform into a pure B2B infrastructure service. This architectural change positions PayFlow as a backend financial infrastructure that powers other applications like RoSaBank, rather than serving end consumers directly.
+PayFlow has been comprehensively refactored into a pure B2B infrastructure service with proper partner management, API key authentication, and wallet scoping. This transformation positions PayFlow as enterprise-grade financial infrastructure that powers third-party applications.
 
 ### Key Architectural Changes
-- **B2B-Only Focus**: Removed consumer-facing features, admin/monitoring interface only
-- **Infrastructure Service**: PayFlow serves as backend for integrated applications
-- **RoSaBank Integration**: Complete integration demonstrating B2B infrastructure capabilities
-- **Admin Dashboard**: Monitoring and management interface for system administrators
-- **API-First Design**: All interactions through well-defined APIs and integrations
+- **Pure B2B Infrastructure**: Complete separation between admin interface and partner APIs
+- **Partner-Scoped Operations**: All wallets and transactions belong to specific partners
+- **API Key Authentication**: Secure API key system with permissions and rate limiting
+- **Multi-Gateway Strategy**: Partners can use their own Stripe Connect accounts or shared infrastructure
+- **Comprehensive Admin Tools**: Complete partner onboarding and API key management
 
 ### Integration Features
-- **PayFlow Client SDK**: Complete TypeScript SDK for external application integration
-- **ROSCA-Specific Helpers**: Specialized methods for rotating savings group operations
-- **Automated Financial Flows**: Contribution collection and payout distribution automation
-- **Real-time Transaction Monitoring**: Complete audit trail for all financial operations
-- **Multi-Application Support**: Designed to support multiple client applications simultaneously
+- **Partner Management**: Full lifecycle from application through approval and monitoring
+- **API Key System**: Sandbox/production keys with granular permissions
+- **Wallet Scoping**: Partner-owned wallets with external ID mapping
+- **Real-time Monitoring**: Complete audit trail and usage analytics
+- **Webhook Infrastructure**: Event-driven architecture for real-time updates
+
+### B2B Authentication Model
+- **Admin Interface**: Session-based authentication for PayFlow administrators
+- **Partner APIs**: API key authentication with Bearer tokens
+- **Permission System**: Granular permissions (wallets:read, transactions:write, etc.)
+- **Rate Limiting**: Per-partner rate limiting and usage tracking
 
 # User Preferences
 

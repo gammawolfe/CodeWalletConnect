@@ -17,6 +17,7 @@ export function Navigation() {
 
   const navigationItems = [
     { href: "/dashboard", label: "Admin Dashboard" },
+    { href: "/partners", label: "Partner Management" },
     { href: "/integrations", label: "App Integrations" },
     { href: "/onboarding", label: "App Onboarding" },
     { href: "/api-docs", label: "API Documentation" },
