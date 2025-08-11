@@ -29,6 +29,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "live", timestamp: new Date().toISOString() });
   });
 
+  // Test Stripe connection endpoint
+  app.post("/api/v1/test-stripe-connection", requireAuth, async (req: any, res, next) => {
+    try {
+      const { secretKey } = req.body;
+      
+      if (!secretKey || secretKey.includes('••••')) {
+        return res.status(400).json({ 
+          message: "Valid secret key is required to test connection" 
+        });
+      }
+
+      // Import Stripe dynamically since it's already imported elsewhere
+      const Stripe = require('stripe');
+      
+      // Create a temporary Stripe instance with the provided key
+      const testStripe = new Stripe(secretKey, {
+        apiVersion: "2023-10-16",
+      });
+
+      // Test the connection by retrieving account information
+      const account = await testStripe.accounts.retrieve();
+      
+      res.json({ 
+        success: true, 
+        account: {
+          id: account.id,
+          display_name: account.display_name || account.business_profile?.name || 'Stripe Account',
+          country: account.country,
+          type: account.type
+        }
+      });
+    } catch (error: any) {
+      console.error('Stripe connection test failed:', error);
+      
+      let message = "Failed to connect to Stripe";
+      if (error.type === 'StripeAuthenticationError') {
+        message = "Invalid API key. Please check your secret key.";
+      } else if (error.type === 'StripePermissionError') {
+        message = "API key doesn't have sufficient permissions.";
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      res.status(400).json({ 
+        success: false, 
+        message 
+      });
+    }
+  });
+
   // Wallet management routes (require authentication)
   app.post("/api/v1/wallets", requireAuth, async (req: any, res, next) => {
     try {

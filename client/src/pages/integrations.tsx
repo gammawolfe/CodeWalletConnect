@@ -107,6 +107,47 @@ export default function Integrations() {
     const [publishableKey, setPublishableKey] = useState('pk_test_••••••••••••••••••••••••••••••••');
     const [secretKey, setSecretKey] = useState('sk_test_••••••••••••••••••••••••••••••••');
     const [webhookSecret, setWebhookSecret] = useState('whsec_••••••••••••••••••••••••••••••••');
+    const [testingConnection, setTestingConnection] = useState(false);
+
+    const testStripeConnection = async () => {
+      setTestingConnection(true);
+      try {
+        // Test the connection by making a simple API call to Stripe
+        const response = await fetch('/api/v1/test-stripe-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            publishableKey: publishableKey.includes('••••') ? undefined : publishableKey,
+            secretKey: secretKey.includes('••••') ? undefined : secretKey,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          toast({
+            title: "Connection successful",
+            description: `Connected to Stripe successfully. Account: ${result.account?.display_name || 'Unknown'}`,
+          });
+        } else {
+          toast({
+            title: "Connection failed",
+            description: result.message || "Failed to connect to Stripe. Please check your API keys.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Connection error",
+          description: "Network error while testing Stripe connection.",
+          variant: "destructive",
+        });
+      } finally {
+        setTestingConnection(false);
+      }
+    };
 
     return (
       <DialogContent className="max-w-2xl">
@@ -242,8 +283,12 @@ export default function Integrations() {
               Cancel
             </Button>
             <div className="space-x-2">
-              <Button variant="outline">
-                Test Connection
+              <Button 
+                variant="outline" 
+                onClick={testStripeConnection}
+                disabled={testingConnection}
+              >
+                {testingConnection ? "Testing..." : "Test Connection"}
               </Button>
               <Button onClick={() => {
                 toast({
