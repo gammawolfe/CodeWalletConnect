@@ -24,7 +24,8 @@ import {
   Code,
   Shield,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from "lucide-react";
 
 export default function Onboarding() {
