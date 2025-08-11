@@ -30,6 +30,8 @@ import {
 export default function Onboarding() {
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [newApplicationOpen, setNewApplicationOpen] = useState(false);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<any>(null);
 
   // Mock data for onboarding applications
   const applications = [
@@ -238,6 +240,202 @@ export default function Onboarding() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* API Key Management Dialog */}
+            <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>API Key Management - {selectedApp?.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  {/* Current API Keys */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Current API Keys</h3>
+                    <div className="space-y-4">
+                      {/* Sandbox Keys */}
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-base">Sandbox Environment</CardTitle>
+                              <p className="text-sm text-gray-600">For development and testing</p>
+                            </div>
+                            <Badge variant="outline">Test</Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div>
+                            <Label className="text-sm font-medium">Public Key</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm">
+                                {selectedApp?.apiKeys?.sandbox || 'Not generated'}
+                              </code>
+                              <Button size="sm" variant="outline">
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Secret Key</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm">
+                                sk_test_••••••••••••••••••••••••••••••••
+                              </code>
+                              <Button size="sm" variant="outline">
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center text-sm text-gray-600">
+                            <span>Created: January 22, 2024</span>
+                            <Button size="sm" variant="outline">
+                              Regenerate Sandbox Keys
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Production Keys */}
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-base">Production Environment</CardTitle>
+                              <p className="text-sm text-gray-600">For live transactions</p>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800">Live</Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {selectedApp?.apiKeys?.production ? (
+                            <>
+                              <div>
+                                <Label className="text-sm font-medium">Public Key</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm">
+                                    {selectedApp.apiKeys.production}
+                                  </code>
+                                  <Button size="sm" variant="outline">
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium">Secret Key</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm">
+                                    sk_live_••••••••••••••••••••••••••••••••
+                                  </code>
+                                  <Button size="sm" variant="outline">
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="outline">
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center text-sm text-gray-600">
+                                <span>Created: {selectedApp.approvedDate}</span>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline">
+                                    Regenerate Production Keys
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-red-600">
+                                    Revoke Access
+                                  </Button>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center py-6">
+                              <p className="text-gray-600 mb-4">Production keys not yet generated</p>
+                              <Button>Generate Production Keys</Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* API Usage Stats */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">API Usage Statistics</h3>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm text-gray-600">Requests (24h)</p>
+                          <p className="text-2xl font-bold">2,847</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm text-gray-600">Success Rate</p>
+                          <p className="text-2xl font-bold text-green-600">99.8%</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm text-gray-600">Rate Limit</p>
+                          <p className="text-2xl font-bold">1000/min</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* Webhook Configuration */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Webhook Configuration</h3>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm font-medium">Webhook URL</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input 
+                                className="flex-1" 
+                                value="https://api.rosabank.com/payflow/webhook"
+                                readOnly
+                              />
+                              <Button size="sm" variant="outline">
+                                Test
+                              </Button>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Events</Label>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline">wallet.created</Badge>
+                              <Badge variant="outline">transaction.completed</Badge>
+                              <Badge variant="outline">payment.succeeded</Badge>
+                              <Badge variant="outline">payout.processed</Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Last successful delivery: 2 minutes ago</span>
+                            <Button size="sm" variant="outline">
+                              Update Configuration
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setApiKeyModalOpen(false)}>
+                      Close
+                    </Button>
+                    <Button>
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -421,7 +619,14 @@ export default function Onboarding() {
                           </Button>
                         )}
                         {app.status === 'approved' && (
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApp(app);
+                              setApiKeyModalOpen(true);
+                            }}
+                          >
                             <Code className="h-3 w-3 mr-1" />
                             Manage API Keys
                           </Button>
