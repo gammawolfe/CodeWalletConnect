@@ -16,10 +16,10 @@ export function Navigation() {
   const [location] = useLocation();
 
   const navigationItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/api-docs", label: "API Docs" },
-    { href: "/integrations", label: "Integrations" },
-    { href: "/monitoring", label: "Monitoring" },
+    { href: "/dashboard", label: "Admin Dashboard" },
+    { href: "/api-docs", label: "API Documentation" },
+    { href: "/integrations", label: "App Integrations" },
+    { href: "/monitoring", label: "System Monitoring" },
   ];
 
   return (
@@ -31,7 +31,7 @@ export function Navigation() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Wallet className="text-white text-sm" />
               </div>
-              <span className="text-xl font-bold text-gray-900">PayFlow</span>
+              <span className="text-xl font-bold text-gray-900">PayFlow Admin</span>
             </Link>
             <div className="hidden md:flex space-x-6">
               {navigationItems.map((item) => (

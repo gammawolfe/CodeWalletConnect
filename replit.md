@@ -2,11 +2,18 @@
 
 PayFlow is a production-ready Payment Gateway Aggregator and Wallet Management System built with Node.js and TypeScript. The system provides a comprehensive REST API for wallet operations, implements double-entry accounting principles, and supports multiple payment gateways through a pluggable adapter architecture. It features a modern React frontend with shadcn/ui components and includes robust authentication, transaction orchestration, and compliance features.
 
-## Recent Development: RoSaBank Integration
+## Recent Development: B2B Infrastructure Transformation
 
-PayFlow now includes comprehensive integration capabilities for external applications, specifically demonstrated through the RoSaBank (ROSCA/rotating savings groups) integration. This integration showcases PayFlow's ability to serve as a financial infrastructure backend for other applications requiring secure wallet operations and payment processing.
+PayFlow has been transformed from a B2C + B2B platform into a pure B2B infrastructure service. This architectural change positions PayFlow as a backend financial infrastructure that powers other applications like RoSaBank, rather than serving end consumers directly.
 
-### Key Integration Features
+### Key Architectural Changes
+- **B2B-Only Focus**: Removed consumer-facing features, admin/monitoring interface only
+- **Infrastructure Service**: PayFlow serves as backend for integrated applications
+- **RoSaBank Integration**: Complete integration demonstrating B2B infrastructure capabilities
+- **Admin Dashboard**: Monitoring and management interface for system administrators
+- **API-First Design**: All interactions through well-defined APIs and integrations
+
+### Integration Features
 - **PayFlow Client SDK**: Complete TypeScript SDK for external application integration
 - **ROSCA-Specific Helpers**: Specialized methods for rotating savings group operations
 - **Automated Financial Flows**: Contribution collection and payout distribution automation

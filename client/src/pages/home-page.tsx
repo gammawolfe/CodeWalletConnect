@@ -65,18 +65,18 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6">
-                Payment Gateway Aggregator &{" "}
-                <span className="text-blue-200">Wallet Service</span>
+                B2B Payment Infrastructure &{" "}
+                <span className="text-blue-200">Financial Backend</span>
               </h1>
               <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-                Production-ready REST API with double-entry ledger, OIDC
-                authentication, and pluggable payment gateway adapters. Built
-                for scale and security.
+                Production-ready financial infrastructure powering integrated applications. 
+                Complete REST API with double-entry ledger, payment processing, and wallet management. 
+                Built for B2B integration and scale.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/dashboard">
                   <Button className="bg-white text-primary px-6 py-3 hover:bg-gray-50 font-semibold">
-                    Get Started
+                    Admin Dashboard
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -106,11 +106,11 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Core Features
+              Infrastructure Features
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Enterprise-grade payment processing with comprehensive security,
-              observability, and developer experience
+              Enterprise-grade financial infrastructure with comprehensive security,
+              observability, and B2B integration capabilities
             </p>
           </div>
 
@@ -137,11 +137,11 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Easy Integration
+              B2B Integration Ready
             </h2>
             <p className="text-xl text-gray-600">
-              Multiple SDKs and comprehensive documentation for seamless
-              integration
+              Complete SDKs and APIs for integrating PayFlow into your applications.
+              See our RoSaBank integration as a reference implementation.
             </p>
           </div>
 
@@ -152,20 +152,22 @@ export default function HomePage() {
                   <Code className="text-white text-xl" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  TypeScript SDK
+                  PayFlow Client SDK
                 </h3>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-4">
-                  Full-featured SDK with type definitions and promise-based API
-                  for Node.js applications.
+                  Complete TypeScript SDK for wallet operations, payments, and ROSCA-specific helpers.
+                  Used by RoSaBank and other integrated applications.
                 </p>
                 <div className="bg-gray-50 rounded-lg p-3 text-sm font-mono text-gray-800 mb-4">
-                  npm install @payflow/sdk
+                  // See integration/payflow-client.ts
                 </div>
-                <Button className="w-full bg-blue-500 hover:bg-blue-600">
-                  Download SDK
-                </Button>
+                <Link href="/integrations">
+                  <Button className="w-full bg-blue-500 hover:bg-blue-600">
+                    View Integration Guide
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
@@ -175,25 +177,27 @@ export default function HomePage() {
                   <Smartphone className="text-white text-xl" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Mobile SDKs
+                  RoSaBank Integration
                 </h3>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-4">
-                  Native iOS and Android SDKs with comprehensive documentation
-                  and examples.
+                  Complete reference implementation showing how to integrate PayFlow 
+                  into ROSCA applications for group savings and payments.
                 </p>
                 <div className="space-y-2 mb-4">
                   <div className="bg-gray-50 rounded-lg p-3 text-sm font-mono text-gray-800">
-                    pod 'PayFlowSDK'
+                    ROSCA Groups • Members • Contributions
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3 text-sm font-mono text-gray-800">
-                    implementation 'com.payflow:sdk'
+                    Automated Payouts • Transaction Tracking
                   </div>
                 </div>
-                <Button className="w-full bg-green-500 hover:bg-green-600">
-                  View Mobile Guides
-                </Button>
+                <Link href="/integrations">
+                  <Button className="w-full bg-green-500 hover:bg-green-600">
+                    View RoSaBank Integration
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 

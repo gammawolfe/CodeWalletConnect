@@ -90,16 +90,13 @@ export function WalletOverview() {
         </Card>
       </div>
 
-      {/* Wallets List */}
+      {/* System Wallets Overview */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Your Wallets</CardTitle>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Wallet
-            </Button>
-          </div>
+          <CardTitle>System Wallets Overview</CardTitle>
+          <p className="text-sm text-gray-600">
+            Wallets managed by integrated applications (RoSaBank, etc.)
+          </p>
         </CardHeader>
         <CardContent>
           {wallets && wallets.length > 0 ? (
@@ -114,14 +111,19 @@ export function WalletOverview() {
                       <Wallet className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">{wallet.id}</h3>
+                      <h3 className="font-semibold">{wallet.name || wallet.id}</h3>
                       <p className="text-sm text-gray-500">
-                        Created {new Date(wallet.createdAt).toLocaleDateString()}
+                        {wallet.type} • Created {new Date(wallet.createdAt).toLocaleDateString()}
                       </p>
+                      {wallet.metadata?.rosaGroupId && (
+                        <Badge variant="outline" className="text-xs mt-1">
+                          ROSCA Group
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold">$0.00</p>
+                    <p className="text-lg font-semibold">${wallet.balance?.toFixed(2) || '0.00'}</p>
                     <Badge variant="secondary" className="text-xs">
                       {wallet.currency}
                     </Badge>
@@ -133,15 +135,11 @@ export function WalletOverview() {
             <div className="text-center py-8">
               <Wallet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No wallets yet
+                No integrated wallets
               </h3>
               <p className="text-gray-500 mb-4">
-                Create your first wallet to get started with transactions.
+                Wallets will appear here when created by integrated applications like RoSaBank.
               </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Wallet
-              </Button>
             </div>
           )}
         </CardContent>
