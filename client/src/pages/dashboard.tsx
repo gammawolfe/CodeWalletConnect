@@ -1,5 +1,5 @@
 import { Navigation } from "@/components/navigation";
-import { WalletOverview } from "@/components/wallet-overview";
+
 import { TransactionTable } from "@/components/transaction-table";
 
 export default function Dashboard() {
@@ -16,7 +16,10 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-8">
-          <WalletOverview />
+          {/* Partner Overview will be implemented here */}
+        <div className="text-center py-8 text-gray-500">
+          B2B Partner metrics and system overview will be displayed here
+        </div>
           <TransactionTable />
         </div>
       </div>

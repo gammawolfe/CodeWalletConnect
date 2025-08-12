@@ -1,29 +1,29 @@
 # Overview
 
-PayFlow is a production-ready Payment Gateway Aggregator and Wallet Management System built with Node.js and TypeScript. The system provides a comprehensive REST API for wallet operations, implements double-entry accounting principles, and supports multiple payment gateways through a pluggable adapter architecture. It features a modern React frontend with shadcn/ui components and includes robust authentication, transaction orchestration, and compliance features.
+PayFlow is a production-ready Payment Gateway Aggregator and Wallet Management System built with Node.js and TypeScript, architected as a pure B2B infrastructure service. The system provides comprehensive REST APIs for financial operations, implements double-entry accounting principles, and supports multiple payment gateways through a pluggable adapter architecture. It features a modern React admin interface with shadcn/ui components for partner management and system monitoring.
 
-## Recent Development: Complete B2B Infrastructure Architecture
+## Current Architecture: Complete B2B Infrastructure Service
 
-PayFlow has been comprehensively refactored into a pure B2B infrastructure service with proper partner management, API key authentication, and wallet scoping. This transformation positions PayFlow as enterprise-grade financial infrastructure that powers third-party applications.
+PayFlow serves as enterprise-grade financial infrastructure that powers third-party applications like RoSaBank ROSCA platform, MicroLend Pro, and other fintech applications.
 
-### Key Architectural Changes
-- **Pure B2B Infrastructure**: Complete separation between admin interface and partner APIs
-- **Partner-Scoped Operations**: All wallets and transactions belong to specific partners
-- **API Key Authentication**: Secure API key system with permissions and rate limiting
-- **Multi-Gateway Strategy**: Partners can use their own Stripe Connect accounts or shared infrastructure
-- **Comprehensive Admin Tools**: Complete partner onboarding and API key management
+### Core B2B Features
+- **Partner Management**: Complete B2B client lifecycle management with application review and approval
+- **API Key Authentication**: Secure Bearer token system with environment separation (sandbox/production)
+- **Partner-Scoped Operations**: All wallets and transactions are owned by and isolated to specific partners
+- **Admin Interface**: Dedicated admin tools for PayFlow team to manage partners and monitor system health
+- **External ID Mapping**: Partners can map their internal user/wallet IDs to PayFlow entities
 
-### Integration Features
-- **Partner Management**: Full lifecycle from application through approval and monitoring
-- **API Key System**: Sandbox/production keys with granular permissions
-- **Wallet Scoping**: Partner-owned wallets with external ID mapping
-- **Real-time Monitoring**: Complete audit trail and usage analytics
-- **Webhook Infrastructure**: Event-driven architecture for real-time updates
+### Navigation Structure
+- **Dashboard**: Business metrics and system overview
+- **Partners**: B2B client management and API key administration  
+- **System Status**: Payment gateway health and infrastructure monitoring
+- **API Docs**: Documentation for partner developers
+- **Monitoring**: Detailed system logs and analytics
 
-### B2B Authentication Model
+### Authentication Architecture
 - **Admin Interface**: Session-based authentication for PayFlow administrators
-- **Partner APIs**: API key authentication with Bearer tokens
-- **Permission System**: Granular permissions (wallets:read, transactions:write, etc.)
+- **Partner APIs**: API key authentication with Bearer tokens and granular permissions
+- **Permission System**: Fine-grained access control (wallets:read, transactions:write, payouts:write, etc.)
 - **Rate Limiting**: Per-partner rate limiting and usage tracking
 
 # User Preferences
