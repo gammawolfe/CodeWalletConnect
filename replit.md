@@ -48,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: Express sessions with PostgreSQL store
 - **Authentication**: Passport.js with local strategy, OIDC/OAuth2 support planned
 - **API Design**: RESTful endpoints with OpenAPI v3 documentation structure
+- **Service Layer**: Clean separation between data access (storage.ts) and business logic (services/)
 
 ## Database Design
 - **Primary Database**: PostgreSQL with Neon serverless driver
@@ -70,11 +71,17 @@ Preferred communication style: Simple, everyday language.
 - **Webhook Security**: HMAC signature verification for incoming webhook events
 
 ## Transaction Processing
-- **Ledger System**: Immutable double-entry accounting with audit trails
+- **Ledger System**: Immutable double-entry accounting with audit trails (storage layer)
+- **Business Logic**: Double-entry validation and transaction orchestration (service layer)
 - **Idempotency**: Built-in support for idempotent operations using unique keys
 - **Status Tracking**: Comprehensive transaction status management (pending, completed, failed)
 - **Balance Calculation**: Computed from ledger entries rather than mutable balance fields
 - **Async Processing**: Message queue integration ready for complex transaction orchestration
+
+## Architecture Layers
+- **Storage Layer (storage.ts)**: Pure data access operations, database queries, ledger operations
+- **Service Layer (services/)**: Business logic, validation, partner scoping, transaction orchestration
+- **API Layer (routes.ts)**: Authentication, authorization, request validation, service coordination
 
 # External Dependencies
 

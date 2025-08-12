@@ -62,6 +62,25 @@ export interface IStorage {
   }): Promise<LedgerEntry>;
   getLedgerEntriesByWallet(walletId: string, limit?: number, offset?: number): Promise<LedgerEntry[]>;
   getLedgerEntriesByTransaction(transactionId: string): Promise<LedgerEntry[]>;
+  auditTransaction(transactionId: string): Promise<{
+    transactionId: string;
+    valid: boolean;
+    entries: LedgerEntry[];
+    totals: {
+      debits: string;
+      credits: string;
+      difference: string;
+    };
+  }>;
+  getAccountStatement(walletId: string, startDate?: Date, endDate?: Date): Promise<{
+    walletId: string;
+    entries: Array<LedgerEntry & { runningBalance: string }>;
+    finalBalance: string;
+    period: {
+      startDate?: string;
+      endDate?: string;
+    };
+  }>;
   
   // Gateway operations
   createGatewayTransaction(gatewayTx: {
@@ -318,6 +337,64 @@ export class DatabaseStorage implements IStorage {
       .from(ledgerEntries)
       .where(eq(ledgerEntries.transactionId, transactionId))
       .orderBy(ledgerEntries.createdAt);
+  }
+
+  async auditTransaction(transactionId: string) {
+    const entries = await this.getLedgerEntriesByTransaction(transactionId);
+    
+    // Calculate totals
+    const debits = entries
+      .filter((e: LedgerEntry) => e.type === 'debit')
+      .reduce((sum: number, e: LedgerEntry) => sum + parseFloat(e.amount), 0);
+    const credits = entries
+      .filter((e: LedgerEntry) => e.type === 'credit')
+      .reduce((sum: number, e: LedgerEntry) => sum + parseFloat(e.amount), 0);
+    
+    const isValid = Math.abs(debits - credits) < 0.01; // Allow for minor rounding
+    
+    return {
+      transactionId,
+      valid: isValid,
+      entries,
+      totals: {
+        debits: debits.toFixed(2),
+        credits: credits.toFixed(2),
+        difference: (debits - credits).toFixed(2)
+      }
+    };
+  }
+
+  async getAccountStatement(walletId: string, startDate?: Date, endDate?: Date) {
+    const entries = await this.getLedgerEntriesByWallet(walletId, 1000, 0);
+    
+    // Filter by date range if provided
+    const filteredEntries = entries.filter((entry: LedgerEntry) => {
+      if (startDate && entry.createdAt < startDate) return false;
+      if (endDate && entry.createdAt > endDate) return false;
+      return true;
+    });
+
+    // Calculate running balance
+    let runningBalance = 0;
+    const statement = filteredEntries.map((entry: LedgerEntry) => {
+      const amount = parseFloat(entry.amount);
+      runningBalance += entry.type === 'credit' ? amount : -amount;
+      
+      return {
+        ...entry,
+        runningBalance: runningBalance.toFixed(2)
+      };
+    });
+
+    return {
+      walletId,
+      entries: statement,
+      finalBalance: runningBalance.toFixed(2),
+      period: {
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString()
+      }
+    };
   }
 
   async createGatewayTransaction(gatewayTx: {
