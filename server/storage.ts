@@ -60,6 +60,8 @@ export interface IStorage {
     currency: string;
     description?: string;
   }): Promise<LedgerEntry>;
+  getLedgerEntriesByWallet(walletId: string, limit?: number, offset?: number): Promise<LedgerEntry[]>;
+  getLedgerEntriesByTransaction(transactionId: string): Promise<LedgerEntry[]>;
   
   // Gateway operations
   createGatewayTransaction(gatewayTx: {
@@ -298,6 +300,24 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return ledgerEntry;
+  }
+
+  async getLedgerEntriesByWallet(walletId: string, limit: number = 100, offset: number = 0): Promise<LedgerEntry[]> {
+    return await db
+      .select()
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.walletId, walletId))
+      .orderBy(desc(ledgerEntries.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getLedgerEntriesByTransaction(transactionId: string): Promise<LedgerEntry[]> {
+    return await db
+      .select()
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.transactionId, transactionId))
+      .orderBy(ledgerEntries.createdAt);
   }
 
   async createGatewayTransaction(gatewayTx: {
