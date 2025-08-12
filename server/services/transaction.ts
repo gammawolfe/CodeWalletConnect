@@ -89,13 +89,20 @@ export class TransactionService {
       return await storage.getTransactionsByWallet(walletId, limit, offset);
     }
 
-    // Get all partner wallets and their transactions
+    // Get all partner wallets
     const wallets = await storage.getWalletsByPartnerId(partnerId);
-    const walletIds = wallets.map(w => w.id);
+    const allTransactions = [];
     
-    // This would need a more complex query in real implementation
-    // For now, return empty array as storage doesn't have this method
-    return [];
+    // Get transactions from all partner wallets
+    for (const wallet of wallets) {
+      const transactions = await storage.getTransactionsByWallet(wallet.id, limit, offset);
+      allTransactions.push(...transactions);
+    }
+    
+    // Sort by creation date and limit results
+    return allTransactions
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 
   async updateTransactionStatus(partnerId: string, transactionId: string, status: string, gatewayTransactionId?: string) {

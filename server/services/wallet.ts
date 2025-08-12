@@ -10,23 +10,11 @@ interface PartnerWalletRequest {
 
 export class WalletService {
   async createWallet(partnerId: string, walletData: Omit<InsertWallet, 'partnerId'>) {
-    const wallet = await storage.createWallet({
+    return await storage.createWallet({
       partnerId,
       ...walletData,
       currency: walletData.currency || 'USD'
     });
-
-    // Create initial ledger entry with zero balance
-    await storage.createLedgerEntry({
-      transactionId: 'initial',
-      walletId: wallet.id,
-      type: 'credit',
-      amount: '0.00',
-      currency: wallet.currency,
-      description: 'Wallet created'
-    });
-
-    return wallet;
   }
 
   async getPartnerWallet(request: PartnerWalletRequest) {
