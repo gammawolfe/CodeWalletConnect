@@ -1,6 +1,6 @@
 import { storage } from "../storage";
-import { ledgerService } from "./ledger";
-import type { CreditWallet, DebitWallet, Transfer } from "@shared/schema";
+import { transactionService } from "./transaction";
+import type { InsertWallet } from "@shared/schema";
 
 interface PartnerWalletRequest {
   partnerId: string;
@@ -9,20 +9,11 @@ interface PartnerWalletRequest {
 }
 
 export class WalletService {
-  async createWallet(partnerId: string, walletData: {
-    externalUserId?: string;
-    externalWalletId?: string;
-    name?: string;
-    currency?: string;
-    metadata?: any;
-  }) {
+  async createWallet(partnerId: string, walletData: Omit<InsertWallet, 'partnerId'>) {
     const wallet = await storage.createWallet({
       partnerId,
-      externalUserId: walletData.externalUserId,
-      externalWalletId: walletData.externalWalletId,
-      name: walletData.name,
-      currency: walletData.currency || 'USD',
-      metadata: walletData.metadata
+      ...walletData,
+      currency: walletData.currency || 'USD'
     });
 
     // Create initial ledger entry with zero balance
@@ -36,20 +27,6 @@ export class WalletService {
     });
 
     return wallet;
-  }
-
-  async getWalletBalance(walletId: string) {
-    const wallet = await storage.getWallet(walletId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
-    }
-
-    const balance = await storage.getWalletBalance(walletId);
-    return {
-      walletId,
-      balance,
-      currency: wallet.currency
-    };
   }
 
   async getPartnerWallet(request: PartnerWalletRequest) {
@@ -72,155 +49,83 @@ export class WalletService {
     return await storage.getWalletsByPartnerId(partnerId);
   }
 
-  async creditWallet(data: CreditWallet & { partnerId: string }) {
-    // Check for idempotency
-    const existingTx = await storage.getTransactionByIdempotencyKey(data.idempotencyKey);
-    if (existingTx) {
-      return existingTx;
-    }
-
-    const wallet = await this.getPartnerWallet({
-      partnerId: data.partnerId,
-      walletId: data.walletId
-    });
+  async getWalletBalance(partnerId: string, walletId: string) {
+    const wallet = await this.getPartnerWallet({ partnerId, walletId });
     if (!wallet) {
       throw new Error('Wallet not found or access denied');
     }
 
-    // Create transaction
-    const transaction = await storage.createTransaction({
+    const balance = await storage.getWalletBalance(walletId);
+    return {
+      walletId,
+      balance,
+      currency: wallet.currency
+    };
+  }
+
+  async creditWallet(partnerId: string, data: {
+    walletId: string;
+    amount: string;
+    currency?: string;
+    description?: string;
+    idempotencyKey: string;
+  }) {
+    return await transactionService.createTransaction(partnerId, {
       type: 'credit',
       amount: data.amount,
-      currency: data.currency,
+      currency: data.currency || 'USD',
       description: data.description,
       toWalletId: data.walletId,
       idempotencyKey: data.idempotencyKey
     });
-
-    // Create ledger entry
-    await ledgerService.createDoubleEntry(transaction.id, [
-      {
-        walletId: data.walletId,
-        type: 'credit',
-        amount: data.amount,
-        currency: data.currency,
-        description: data.description || 'Wallet credit'
-      }
-    ]);
-
-    // Update transaction status
-    await storage.updateTransactionStatus(transaction.id, 'completed');
-
-    return transaction;
   }
 
-  async debitWallet(data: DebitWallet) {
-    // Check for idempotency
-    const existingTx = await storage.getTransactionByIdempotencyKey(data.idempotencyKey);
-    if (existingTx) {
-      return existingTx;
-    }
-
-    const wallet = await storage.getWallet(data.walletId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
-    }
-
-    // Check balance
+  async debitWallet(partnerId: string, data: {
+    walletId: string;
+    amount: string;
+    currency?: string;
+    description?: string;
+    idempotencyKey: string;
+  }) {
+    // Check balance first
     const balance = await storage.getWalletBalance(data.walletId);
     if (parseFloat(balance) < parseFloat(data.amount)) {
       throw new Error('Insufficient balance');
     }
 
-    // Create transaction
-    const transaction = await storage.createTransaction({
+    return await transactionService.createTransaction(partnerId, {
       type: 'debit',
       amount: data.amount,
-      currency: data.currency,
+      currency: data.currency || 'USD',
       description: data.description,
       fromWalletId: data.walletId,
       idempotencyKey: data.idempotencyKey
     });
-
-    // Create ledger entry
-    await ledgerService.createDoubleEntry(transaction.id, [
-      {
-        walletId: data.walletId,
-        type: 'debit',
-        amount: data.amount,
-        currency: data.currency,
-        description: data.description || 'Wallet debit'
-      }
-    ]);
-
-    // Update transaction status
-    await storage.updateTransactionStatus(transaction.id, 'completed');
-
-    return transaction;
   }
 
-  async transferBetweenWallets(data: Transfer) {
-    // Check for idempotency
-    const existingTx = await storage.getTransactionByIdempotencyKey(data.idempotencyKey);
-    if (existingTx) {
-      return existingTx;
-    }
-
-    const fromWallet = await storage.getWallet(data.fromWalletId);
-    const toWallet = await storage.getWallet(data.toWalletId);
-
-    if (!fromWallet || !toWallet) {
-      throw new Error('Wallet not found');
-    }
-
-    // Check balance
+  async transferBetweenWallets(partnerId: string, data: {
+    fromWalletId: string;
+    toWalletId: string;
+    amount: string;
+    currency?: string;
+    description?: string;
+    idempotencyKey: string;
+  }) {
+    // Check balance first
     const balance = await storage.getWalletBalance(data.fromWalletId);
     if (parseFloat(balance) < parseFloat(data.amount)) {
       throw new Error('Insufficient balance');
     }
 
-    // Create transaction
-    const transaction = await storage.createTransaction({
+    return await transactionService.createTransaction(partnerId, {
       type: 'transfer',
       amount: data.amount,
-      currency: data.currency,
+      currency: data.currency || 'USD',
       description: data.description,
       fromWalletId: data.fromWalletId,
       toWalletId: data.toWalletId,
       idempotencyKey: data.idempotencyKey
     });
-
-    // Create double-entry ledger entries
-    await ledgerService.createDoubleEntry(transaction.id, [
-      {
-        walletId: data.fromWalletId,
-        type: 'debit',
-        amount: data.amount,
-        currency: data.currency,
-        description: `Transfer to ${data.toWalletId}`
-      },
-      {
-        walletId: data.toWalletId,
-        type: 'credit',
-        amount: data.amount,
-        currency: data.currency,
-        description: `Transfer from ${data.fromWalletId}`
-      }
-    ]);
-
-    // Update transaction status
-    await storage.updateTransactionStatus(transaction.id, 'completed');
-
-    return transaction;
-  }
-
-  async getTransactionHistory(walletId: string, limit: number = 50, offset: number = 0) {
-    const wallet = await storage.getWallet(walletId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
-    }
-
-    return await storage.getTransactionsByWallet(walletId, limit, offset);
   }
 }
 

@@ -8,7 +8,7 @@ import type {
   LedgerEntry, GatewayTransaction 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -241,7 +241,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(transactions)
       .where(
-        and(
+        or(
           eq(transactions.fromWalletId, walletId),
           eq(transactions.toWalletId, walletId)
         )

@@ -38,30 +38,33 @@ export class WebhookService {
   async handleGatewayWebhook(gateway: string, payload: string, signature: string) {
     try {
       // Verify webhook with gateway
-      const event = await paymentGatewayService.handleWebhook(gateway, payload, signature);
+      const webhookResult = await paymentGatewayService.handleWebhook(gateway, payload, signature);
       
-      if (event.type === 'payment_intent.succeeded' || event.type === 'charge.succeeded') {
+      // For now, handle basic webhook structure - this would be gateway-specific
+      const eventData = JSON.parse(payload);
+      
+      if (eventData.type === 'payment_intent.succeeded' || eventData.type === 'charge.succeeded') {
         // Update transaction status
         const gatewayTx = await storage.createGatewayTransaction({
-          gatewayTransactionId: event.data.id,
+          gatewayTransactionId: eventData.data.object.id,
           gateway,
           status: 'completed',
-          amount: (event.data.amount / 100).toString(), // Stripe sends amounts in cents
-          currency: event.data.currency.toUpperCase(),
-          webhookData: event,
-          transactionId: event.data.metadata?.transactionId
+          amount: (eventData.data.object.amount / 100).toString(), // Stripe sends amounts in cents
+          currency: eventData.data.object.currency.toUpperCase(),
+          webhookData: eventData,
+          transactionId: eventData.data.object.metadata?.transactionId
         });
 
         // If transaction ID is available, update our transaction
-        if (event.data.metadata?.transactionId) {
+        if (eventData.data.object.metadata?.transactionId) {
           await storage.updateTransactionStatus(
-            event.data.metadata.transactionId,
+            eventData.data.object.metadata.transactionId,
             'completed',
-            event.data.id
+            eventData.data.object.id
           );
 
           // Notify partner via webhook
-          const transaction = await storage.getTransaction(event.data.metadata.transactionId);
+          const transaction = await storage.getTransaction(eventData.data.object.metadata.transactionId);
           if (transaction) {
             const wallet = transaction.toWalletId 
               ? await storage.getWallet(transaction.toWalletId)

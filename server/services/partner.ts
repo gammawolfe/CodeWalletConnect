@@ -15,7 +15,7 @@ export class PartnerService {
       keyHash,
       environment: 'sandbox',
       permissions: ['wallets:read', 'wallets:write', 'transactions:read', 'transactions:write']
-    });
+    } as any);
 
     return {
       partner,
@@ -79,7 +79,7 @@ export class PartnerService {
       keyHash,
       environment,
       permissions: permissions || ['wallets:read', 'transactions:read']
-    });
+    } as any);
 
     return {
       apiKey: {

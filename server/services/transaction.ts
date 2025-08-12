@@ -40,14 +40,14 @@ export class TransactionService {
           walletId: transactionData.fromWalletId,
           type: 'debit' as const,
           amount: transactionData.amount,
-          currency: transactionData.currency,
+          currency: transactionData.currency || 'USD',
           description: transactionData.description || 'Transfer out'
         },
         {
           walletId: transactionData.toWalletId,
           type: 'credit' as const,
           amount: transactionData.amount,
-          currency: transactionData.currency,
+          currency: transactionData.currency || 'USD',
           description: transactionData.description || 'Transfer in'
         }
       );
@@ -57,7 +57,7 @@ export class TransactionService {
         walletId: transactionData.toWalletId,
         type: 'credit' as const,
         amount: transactionData.amount,
-        currency: transactionData.currency,
+        currency: transactionData.currency || 'USD',
         description: transactionData.description || 'Wallet credit'
       });
     } else if (transactionData.type === 'debit' && transactionData.fromWalletId) {
@@ -66,7 +66,7 @@ export class TransactionService {
         walletId: transactionData.fromWalletId,
         type: 'debit' as const,
         amount: transactionData.amount,
-        currency: transactionData.currency,
+        currency: transactionData.currency || 'USD',
         description: transactionData.description || 'Wallet debit'
       });
     }
