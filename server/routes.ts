@@ -146,8 +146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     validateWalletOwnership,
     async (req: any, res, next) => {
       try {
-        const balance = await walletService.getWalletBalance(req.params.id);
-        res.json({ balance, currency: req.wallet.currency });
+        const result = await walletService.getWalletBalance(req.partner.id, req.params.id);
+        res.json(result);
       } catch (error) {
         next(error);
       }
@@ -204,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...req.body, 
           walletId: req.params.id 
         });
-        const transaction = await walletService.creditWallet(data);
+        const transaction = await walletService.creditWallet(req.partner.id, data);
         res.status(201).json(transaction);
       } catch (error) {
         next(error);
@@ -222,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...req.body, 
           walletId: req.params.id 
         });
-        const transaction = await walletService.debitWallet(data);
+        const transaction = await walletService.debitWallet(req.partner.id, data);
         res.status(201).json(transaction);
       } catch (error) {
         next(error);
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Destination wallet not found or not accessible' });
         }
 
-        const transaction = await walletService.transferBetweenWallets(data);
+        const transaction = await walletService.transferBetweenWallets(req.partner.id, data);
         res.status(201).json(transaction);
       } catch (error) {
         next(error);
