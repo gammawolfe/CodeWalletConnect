@@ -1,20 +1,20 @@
-import { storage } from "../storage";
 import { ledgerService } from "./ledger";
 import { walletService } from "./wallet";
 import type { InsertTransaction } from "@shared/schema";
+import { walletsRepository, transactionsRepository } from "../repositories";
 
 export class TransactionService {
   async createTransaction(partnerId: string, transactionData: Omit<InsertTransaction, 'id'>) {
     // Validate wallet ownership if specified
     if (transactionData.fromWalletId) {
-      const fromWallet = await storage.getWallet(transactionData.fromWalletId);
+      const fromWallet = await walletsRepository.getById(transactionData.fromWalletId);
       if (!fromWallet || fromWallet.partnerId !== partnerId) {
         throw new Error('From wallet not found or access denied');
       }
     }
 
     if (transactionData.toWalletId) {
-      const toWallet = await storage.getWallet(transactionData.toWalletId);
+      const toWallet = await walletsRepository.getById(transactionData.toWalletId);
       if (!toWallet || toWallet.partnerId !== partnerId) {
         throw new Error('To wallet not found or access denied');
       }
@@ -22,14 +22,14 @@ export class TransactionService {
 
     // Check for idempotency
     if (transactionData.idempotencyKey) {
-      const existingTx = await storage.getTransactionByIdempotencyKey(transactionData.idempotencyKey);
+      const existingTx = await transactionsRepository.getByIdempotencyKey(transactionData.idempotencyKey);
       if (existingTx) {
         return existingTx;
       }
     }
 
     // Create transaction
-    const transaction = await storage.createTransaction(transactionData);
+    const transaction = await transactionsRepository.create(transactionData);
 
     // Create appropriate ledger entries based on transaction type
     const ledgerEntries = [] as Array<{ walletId: string; type: 'debit' | 'credit'; amount: string; currency: string; description?: string }>;
@@ -103,20 +103,20 @@ export class TransactionService {
   async getPartnerTransactions(partnerId: string, walletId?: string, limit = 50, offset = 0) {
     if (walletId) {
       // Verify wallet ownership
-      const wallet = await storage.getWallet(walletId);
+      const wallet = await walletsRepository.getById(walletId);
       if (!wallet || wallet.partnerId !== partnerId) {
         throw new Error('Wallet not found or access denied');
       }
-      return await storage.getTransactionsByWallet(walletId, limit, offset);
+      return await transactionsRepository.listByWallet(walletId, limit, offset);
     }
 
     // Get all partner wallets
-    const wallets = await storage.getWalletsByPartnerId(partnerId);
+    const wallets = await walletsRepository.listByPartnerId(partnerId);
     const allTransactions = [];
     
     // Get transactions from all partner wallets
     for (const wallet of wallets) {
-      const transactions = await storage.getTransactionsByWallet(wallet.id, limit, offset);
+      const transactions = await transactionsRepository.listByWallet(wallet.id, limit, offset);
       allTransactions.push(...transactions);
     }
     
@@ -127,27 +127,27 @@ export class TransactionService {
   }
 
   async updateTransactionStatus(partnerId: string, transactionId: string, status: string, gatewayTransactionId?: string) {
-    const transaction = await storage.getTransaction(transactionId);
+    const transaction = await transactionsRepository.getById(transactionId);
     if (!transaction) {
       throw new Error('Transaction not found');
     }
 
     // Verify transaction belongs to partner's wallets
     if (transaction.fromWalletId) {
-      const wallet = await storage.getWallet(transaction.fromWalletId);
+      const wallet = await walletsRepository.getById(transaction.fromWalletId);
       if (!wallet || wallet.partnerId !== partnerId) {
         throw new Error('Transaction access denied');
       }
     }
     
     if (transaction.toWalletId) {
-      const wallet = await storage.getWallet(transaction.toWalletId);
+      const wallet = await walletsRepository.getById(transaction.toWalletId);
       if (!wallet || wallet.partnerId !== partnerId) {
         throw new Error('Transaction access denied');
       }
     }
 
-    return await storage.updateTransactionStatus(transactionId, status, gatewayTransactionId);
+    return await transactionsRepository.updateStatus(transactionId, status, gatewayTransactionId);
   }
 }
 
