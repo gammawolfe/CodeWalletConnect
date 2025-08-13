@@ -51,12 +51,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Import Stripe dynamically since it's already imported elsewhere
-      const Stripe = require('stripe');
-      
+      // Import Stripe dynamically in ESM
+      const { default: Stripe } = await import('stripe');
+
       // Create a temporary Stripe instance with the provided key
       const testStripe = new Stripe(secretKey, {
-        apiVersion: "2023-10-16",
+        apiVersion: (process.env.STRIPE_API_VERSION as any) || "2025-07-30.basil",
       });
 
       // Test the connection by retrieving account information
@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true, 
         account: {
           id: account.id,
-          display_name: account.display_name || account.business_profile?.name || 'Stripe Account',
+          display_name: (account as any).display_name || (account.business_profile as any)?.name || 'Stripe Account',
           country: account.country,
           type: account.type
         }
