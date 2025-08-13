@@ -15,6 +15,7 @@ import { transactionService } from "./services/transaction";
 import { paymentGatewayService } from "./services/payment-gateway";
 import { storage } from "./storage";
 import { partnersRepository, apiKeysRepository } from "./repositories";
+import { walletsRepository } from "./repositories";
 import { 
   insertPartnerSchema,
   insertWalletSchema, 
@@ -242,8 +243,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = transferSchema.parse(req.body);
         
         // Verify both wallets belong to the partner
-        const fromWallet = await storage.getWallet(data.fromWalletId);
-        const toWallet = await storage.getWallet(data.toWalletId);
+        const fromWallet = await walletsRepository.getById(data.fromWalletId);
+        const toWallet = await walletsRepository.getById(data.toWalletId);
         
         if (!fromWallet || fromWallet.partnerId !== req.partner.id) {
           return res.status(404).json({ error: 'Source wallet not found or not accessible' });
@@ -271,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const gateway = req.body.gateway || 'stripe';
         
         // Verify wallet belongs to partner
-        const wallet = await storage.getWallet(data.walletId);
+        const wallet = await walletsRepository.getById(data.walletId);
         if (!wallet || wallet.partnerId !== req.partner.id) {
           return res.status(404).json({ error: 'Wallet not found or not accessible' });
         }
