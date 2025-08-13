@@ -10,6 +10,7 @@ import {
   hashApiKey
 } from "./auth-api";
 import { walletService } from "./services/wallet";
+import { transactionService } from "./services/transaction";
 import { paymentGatewayService } from "./services/payment-gateway";
 import { storage } from "./storage";
 import { 
@@ -161,9 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res, next) => {
       try {
         const { limit = 50, offset = 0 } = req.query;
-        const transactions = await walletService.getTransactionHistory(
-          req.params.id, 
-          parseInt(limit as string), 
+        const transactions = await transactionService.getPartnerTransactions(
+          req.partner.id,
+          req.params.id,
+          parseInt(limit as string),
           parseInt(offset as string)
         );
         res.json(transactions);
