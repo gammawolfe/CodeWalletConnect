@@ -1,4 +1,5 @@
-// Barrel file for repositories; concrete repos will be added in subsequent branches
-export {};
+export { usersRepository } from './users-repository';
+export { partnersRepository } from './partners-repository';
+export { apiKeysRepository } from './api-keys-repository';
 
 

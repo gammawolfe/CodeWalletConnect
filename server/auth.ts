@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { sessionStore } from "./infrastructure/session-store";
+import { usersRepository } from "./repositories";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 
 declare global {
@@ -76,7 +77,7 @@ export function setupAuth(app: Express) {
       { usernameField: 'email' }, // Use email instead of username
       async (email, password, done) => {
         try {
-          const user = await storage.getUserByEmail(email);
+          const user = await usersRepository.getByEmail(email);
           if (!user || !(await comparePasswords(password, user.password))) {
             return done(null, false, { message: 'Invalid credentials' });
           }
@@ -91,7 +92,7 @@ export function setupAuth(app: Express) {
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     try {
-      const user = await storage.getUser(id);
+      const user = await usersRepository.getById(id);
       done(null, user);
     } catch (error) {
       done(error);
@@ -102,17 +103,17 @@ export function setupAuth(app: Express) {
     try {
       const validatedData = insertUserSchema.parse(req.body);
       
-      const existingUser = await storage.getUserByEmail(validatedData.email);
+      const existingUser = await usersRepository.getByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      const usernameExists = await storage.getUserByUsername(validatedData.username);
+      const usernameExists = await usersRepository.getByUsername(validatedData.username);
       if (usernameExists) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      const user = await storage.createUser({
+      const user = await usersRepository.create({
         ...validatedData,
         password: await hashPassword(validatedData.password),
       });

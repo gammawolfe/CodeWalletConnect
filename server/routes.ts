@@ -14,6 +14,7 @@ import { walletService } from "./services/wallet";
 import { transactionService } from "./services/transaction";
 import { paymentGatewayService } from "./services/payment-gateway";
 import { storage } from "./storage";
+import { partnersRepository, apiKeysRepository } from "./repositories";
 import { 
   insertPartnerSchema,
   insertWalletSchema, 
@@ -321,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Partner Management (for PayFlow admin interface)
   app.get("/api/admin/partners", requireAuth, async (req, res, next) => {
     try {
-      const partners = await storage.getPartners();
+      const partners = await partnersRepository.list();
       res.json(partners);
     } catch (error) {
       next(error);
@@ -331,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/partners", requireAuth, async (req, res, next) => {
     try {
       const partnerData = insertPartnerSchema.parse(req.body);
-      const partner = await storage.createPartner(partnerData);
+      const partner = await partnersRepository.create(partnerData);
       res.status(201).json(partner);
     } catch (error) {
       next(error);
@@ -342,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const partner = await storage.updatePartnerStatus(id, status);
+      const partner = await partnersRepository.updateStatus(id, status);
       res.json(partner);
     } catch (error) {
       next(error);
@@ -353,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/partners/:partnerId/api-keys", requireAuth, async (req, res, next) => {
     try {
       const { partnerId } = req.params;
-      const apiKeys = await storage.getApiKeysByPartnerId(partnerId);
+      const apiKeys = await apiKeysRepository.listByPartner(partnerId);
       
       // Don't return the actual key hashes for security
       const sanitizedKeys = apiKeys.map(key => ({
@@ -376,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { publicKey, secretKey, keyHash } = generateApiKeyPair(partnerId, environment);
       
       // Store hashed version in database
-      const apiKey = await storage.createApiKey({
+      const apiKey = await apiKeysRepository.create({
         partnerId,
         keyHash,
         environment: environment as any,
@@ -398,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/admin/api-keys/:keyId", requireAuth, async (req, res, next) => {
     try {
       const { keyId } = req.params;
-      await storage.deactivateApiKey(keyId);
+      await apiKeysRepository.deactivate(keyId);
       res.json({ message: 'API key deactivated' });
     } catch (error) {
       next(error);
