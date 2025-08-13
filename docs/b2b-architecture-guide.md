@@ -29,7 +29,7 @@ PayFlow has been transformed into a pure B2B infrastructure service that provide
 
 ### Admin Interface (PayFlow Team)
 ```
-Session-based authentication
+Session-based authentication + CSRF protection
 → User login with username/password  
 → Express session management
 → Full system access for partner management
@@ -37,7 +37,7 @@ Session-based authentication
 
 ### Partner APIs (B2B Clients)
 ```
-API Key authentication
+API Key authentication (Bearer)
 → Bearer token in Authorization header
 → Partner identification via API key
 → Permission-based access control
@@ -202,6 +202,12 @@ app.post('/payflow/webhook', (req, res) => {
 - **Rate Limiting**: Prevent abuse and ensure fair usage
 
 ### Webhook Security
+- Use raw-body verification for Stripe webhooks; do not JSON-parse before signature verification
+- Partner outbound webhooks are HMAC signed
+### Session Security
+- `SESSION_SECRET` required to start server
+- Cookies: `httpOnly`, `sameSite=lax`, `secure` in production
+- CSRF: `GET /api/csrf-token` issues a token; send `X-CSRF-Token` on auth POSTs
 - **Signature Verification**: HMAC signatures for webhook authenticity
 - **Retry Logic**: Reliable delivery with exponential backoff
 - **Idempotency**: Handle duplicate webhook deliveries gracefully

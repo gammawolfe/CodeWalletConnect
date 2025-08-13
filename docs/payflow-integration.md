@@ -58,6 +58,40 @@ Leverage PayFlow's ledger system for comprehensive reporting:
 3. Update environment configuration
 4. Test wallet creation and balance queries
 
+## Recent Changes and Requirements
+
+- Clearing wallet for double-entry:
+  - Credit/debit operations are now modeled as transfers involving a partner "Clearing" wallet.
+  - The clearing wallet is auto-created on first use and stored in `partners.settings.clearingWalletId`.
+
+- API authentication:
+  - Use header `Authorization: Bearer sk_...` with partner secret API key.
+  - Permissions and environment (`sandbox`/`production`) are enforced per key.
+
+- Stripe webhook:
+  - The endpoint `/api/v1/webhooks/stripe` requires raw body handling. Do not send prettified or altered JSON.
+  - Signature header `Stripe-Signature` must be included.
+
+- Session auth security:
+  - `SESSION_SECRET` is required to start the server; session cookie has `httpOnly`, `sameSite=lax`, and `secure` in production.
+  - CSRF is enforced on `/api/login`, `/api/register`, `/api/logout` via an `X-CSRF-Token` header.
+  - Obtain a token from `GET /api/csrf-token` and reflect it in subsequent requests.
+
+- CORS and security headers:
+  - Server sets Helmet defaults and CORS with `credentials: true`.
+  - Set `CORS_ORIGIN` to your frontend origin when deploying.
+
+- Rate limiting:
+  - Global API RPM can be configured via `RATE_LIMIT_RPM` (default 1000).
+
+- Required environment variables:
+  - `DATABASE_URL` (Neon Postgres)
+  - `SESSION_SECRET`
+  - `CORS_ORIGIN`
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - Optional: `STRIPE_API_VERSION`, `RATE_LIMIT_RPM`
+
 ### Phase 2: Payment Processing
 1. Integrate Stripe payment collection
 2. Implement automated contribution flow
