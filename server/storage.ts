@@ -29,6 +29,7 @@ export interface IStorage {
   createPartner(partner: InsertPartner): Promise<Partner>;
   updatePartnerStatus(id: string, status: string): Promise<Partner>;
   updatePartnerStripeAccount(id: string, stripeAccountId: string): Promise<Partner>;
+  updatePartnerSettings(id: string, settings: Record<string, any>): Promise<Partner>;
 
   // API Key operations (for partner authentication)
   getApiKey(keyHash: string): Promise<ApiKey | undefined>;
@@ -166,6 +167,15 @@ export class DatabaseStorage implements IStorage {
     const [partner] = await db
       .update(partners)
       .set({ stripeAccountId, updatedAt: new Date() })
+      .where(eq(partners.id, id))
+      .returning();
+    return partner;
+  }
+
+  async updatePartnerSettings(id: string, settings: Record<string, any>): Promise<Partner> {
+    const [partner] = await db
+      .update(partners)
+      .set({ settings: settings as any, updatedAt: new Date() })
       .where(eq(partners.id, id))
       .returning();
     return partner;
