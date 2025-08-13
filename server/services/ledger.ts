@@ -1,4 +1,4 @@
-import { storage } from "../storage";
+import { ledgerRepository, walletsRepository } from "../repositories";
 
 interface LedgerEntryInput {
   walletId: string;
@@ -25,10 +25,12 @@ export class LedgerService {
       throw new Error('Double-entry validation failed: debits must equal credits');
     }
 
-    // Create ledger entries via storage
+    // Create ledger entries via repository and update balances
     const ledgerEntries = [];
     for (const entry of entries) {
-      const ledgerEntry = await storage.createLedgerEntry({
+      // Calculate running balance based on current balance from repository
+      // Note: balance is recalculated in storage today; repository approach keeps that encapsulated.
+      const ledgerEntry = await ledgerRepository.create({
         transactionId,
         ...entry
       });
