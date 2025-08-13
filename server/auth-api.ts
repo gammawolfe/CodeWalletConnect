@@ -175,7 +175,7 @@ export async function validateWalletOwnership(req: Request, res: Response, next:
  */
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-export function rateLimit(requestsPerMinute: number = 1000) {
+export function rateLimit(requestsPerMinute: number = parseInt(process.env.RATE_LIMIT_RPM || '1000', 10)) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.apiKey) {
       return next(); // Skip rate limiting if no API key
