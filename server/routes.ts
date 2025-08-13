@@ -13,7 +13,7 @@ import {
 import { walletService } from "./services/wallet";
 import { transactionService } from "./services/transaction";
 import { paymentGatewayService } from "./services/payment-gateway";
-import { storage } from "./storage";
+// storage removed in favor of repositories
 import { partnersRepository, apiKeysRepository } from "./repositories";
 import { walletsRepository } from "./repositories";
 import { 
@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           partnerId: req.partner.id
         });
         
-        const wallet = await storage.createWallet(walletData);
+        const wallet = await walletsRepository.create(walletData);
         res.status(201).json(wallet);
       } catch (error) {
         next(error);
@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requirePermission('wallets:read'), 
     async (req: any, res, next) => {
       try {
-        const wallets = await storage.getWalletsByPartnerId(req.partner.id);
+        const wallets = await walletsRepository.listByPartnerId(req.partner.id);
         res.json(wallets);
       } catch (error) {
         next(error);
@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res, next) => {
       try {
         const { externalId } = req.params;
-        const wallet = await storage.getWalletByExternalId(req.partner.id, externalId);
+        const wallet = await walletsRepository.getByExternalId(req.partner.id, externalId);
         
         if (!wallet) {
           return res.status(404).json({ error: 'Wallet not found' });
@@ -411,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/system/stats", requireAuth, async (req, res, next) => {
     try {
       // Get system statistics
-      const partners = await storage.getPartners();
+      const partners = await partnersRepository.list();
       const activePartners = partners.filter(p => p.status === 'approved').length;
       
       res.json({

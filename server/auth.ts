@@ -4,7 +4,7 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
+// storage removed in favor of repositories
 import { sessionStore } from "./infrastructure/session-store";
 import { usersRepository } from "./repositories";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
