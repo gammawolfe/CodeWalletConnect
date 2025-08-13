@@ -1,5 +1,6 @@
 import { storage } from "../storage";
 import { ledgerService } from "./ledger";
+import { walletService } from "./wallet";
 import type { InsertTransaction } from "@shared/schema";
 
 export class TransactionService {
@@ -31,7 +32,7 @@ export class TransactionService {
     const transaction = await storage.createTransaction(transactionData);
 
     // Create appropriate ledger entries based on transaction type
-    const ledgerEntries = [];
+    const ledgerEntries = [] as Array<{ walletId: string; type: 'debit' | 'credit'; amount: string; currency: string; description?: string }>;
     
     if (transactionData.type === 'transfer' && transactionData.fromWalletId && transactionData.toWalletId) {
       // Transfer between wallets (double-entry)
@@ -52,23 +53,43 @@ export class TransactionService {
         }
       );
     } else if (transactionData.type === 'credit' && transactionData.toWalletId) {
-      // Credit to wallet
-      ledgerEntries.push({
-        walletId: transactionData.toWalletId,
-        type: 'credit' as const,
-        amount: transactionData.amount,
-        currency: transactionData.currency || 'USD',
-        description: transactionData.description || 'Wallet credit'
-      });
+      // Treat credit as transfer from partner clearing wallet to target wallet
+      const clearingWallet = await walletService.getOrCreateClearingWallet(partnerId);
+      ledgerEntries.push(
+        {
+          walletId: clearingWallet.id,
+          type: 'debit',
+          amount: transactionData.amount,
+          currency: transactionData.currency || 'USD',
+          description: transactionData.description || 'Clearing to wallet'
+        },
+        {
+          walletId: transactionData.toWalletId,
+          type: 'credit',
+          amount: transactionData.amount,
+          currency: transactionData.currency || 'USD',
+          description: transactionData.description || 'Wallet credit'
+        }
+      );
     } else if (transactionData.type === 'debit' && transactionData.fromWalletId) {
-      // Debit from wallet
-      ledgerEntries.push({
-        walletId: transactionData.fromWalletId,
-        type: 'debit' as const,
-        amount: transactionData.amount,
-        currency: transactionData.currency || 'USD',
-        description: transactionData.description || 'Wallet debit'
-      });
+      // Treat debit as transfer from wallet to partner clearing wallet
+      const clearingWallet = await walletService.getOrCreateClearingWallet(partnerId);
+      ledgerEntries.push(
+        {
+          walletId: transactionData.fromWalletId,
+          type: 'debit',
+          amount: transactionData.amount,
+          currency: transactionData.currency || 'USD',
+          description: transactionData.description || 'Wallet debit'
+        },
+        {
+          walletId: clearingWallet.id,
+          type: 'credit',
+          amount: transactionData.amount,
+          currency: transactionData.currency || 'USD',
+          description: transactionData.description || 'Wallet to clearing'
+        }
+      );
     }
 
     // Create ledger entries

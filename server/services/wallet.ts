@@ -9,6 +9,29 @@ interface PartnerWalletRequest {
 }
 
 export class WalletService {
+  async getOrCreateClearingWallet(partnerId: string) {
+    const partner = await storage.getPartner(partnerId);
+    const existingClearingWalletId = (partner as any)?.settings?.clearingWalletId as string | undefined;
+    if (existingClearingWalletId) {
+      const existing = await storage.getWallet(existingClearingWalletId);
+      if (existing) return existing;
+    }
+
+    const clearingWallet = await storage.createWallet({
+      partnerId,
+      name: "Clearing",
+      currency: 'USD',
+      metadata: { system: true, purpose: 'clearing' },
+    } as unknown as Omit<InsertWallet, 'partnerId'> & { partnerId: string });
+
+    const currentSettings = ((partner as any)?.settings || {}) as Record<string, any>;
+    await storage.updatePartnerSettings(partnerId, {
+      ...currentSettings,
+      clearingWalletId: clearingWallet.id,
+    });
+
+    return clearingWallet;
+  }
   async createWallet(partnerId: string, walletData: Omit<InsertWallet, 'partnerId'>) {
     return await storage.createWallet({
       partnerId,
