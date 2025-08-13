@@ -1,4 +1,4 @@
-import { storage } from "../storage";
+// storage removed in favor of repositories
 import { transactionService } from "./transaction";
 import type { InsertWallet } from "@shared/schema";
 import { walletsRepository, partnersRepository } from "../repositories";
