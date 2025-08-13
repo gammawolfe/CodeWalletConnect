@@ -50,6 +50,26 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // CSRF token setup endpoint
+  app.get("/api/csrf-token", (req: any, res) => {
+    if (!req.session.csrfToken) {
+      req.session.csrfToken = randomBytes(32).toString("hex");
+    }
+    res.json({ csrfToken: req.session.csrfToken });
+  });
+
+  function requireCsrf(req: any, res: any, next: any) {
+    const headerToken = req.headers["x-csrf-token"] as string | undefined;
+    const sessionToken = req.session?.csrfToken as string | undefined;
+    if (!sessionToken) {
+      return res.status(403).json({ message: "CSRF token not initialized" });
+    }
+    if (!headerToken || headerToken !== sessionToken) {
+      return res.status(403).json({ message: "Invalid CSRF token" });
+    }
+    next();
+  }
+
   passport.use(
     new LocalStrategy(
       { usernameField: 'email' }, // Use email instead of username
@@ -77,7 +97,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", requireCsrf, async (req, res, next) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
       
@@ -110,7 +130,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", requireCsrf, (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
@@ -129,7 +149,7 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", requireCsrf, (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);
