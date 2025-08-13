@@ -5,6 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
+import { sessionStore } from "./infrastructure/session-store";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 
 declare global {
@@ -36,7 +37,7 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
+    store: sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
