@@ -186,6 +186,7 @@ export const insertPartnerSchema = createInsertSchema(partners).pick({
 
 export const insertApiKeySchema = createInsertSchema(apiKeys).pick({
   partnerId: true,
+  keyHash: true,
   environment: true,
   permissions: true,
   expiresAt: true,
