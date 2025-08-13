@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, requireAuth } from "./auth";
 import { 
@@ -286,12 +287,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook Endpoints
   // =====================================
 
-  app.post("/api/v1/webhooks/stripe", async (req, res, next) => {
+  app.post("/api/v1/webhooks/stripe", express.raw({ type: 'application/json' }), async (req, res, next) => {
     try {
       const signature = req.headers['stripe-signature'] as string;
       const result = await paymentGatewayService.handleWebhook(
         'stripe', 
-        JSON.stringify(req.body), 
+        req.body instanceof Buffer ? req.body.toString('utf8') : (req as any).rawBody || (req as any).body,
         signature
       );
       res.json(result);
