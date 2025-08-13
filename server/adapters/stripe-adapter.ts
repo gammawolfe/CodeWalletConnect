@@ -1,11 +1,19 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-07-30.basil',
-});
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY must be set');
+  }
+  const apiVersion = (process.env.STRIPE_API_VERSION as any) || '2025-07-30.basil';
+  return new Stripe(key, {
+    apiVersion,
+  });
+}
 
 export const stripeAdapter = {
   async createPaymentIntent(amount: string, currency: string, metadata?: any) {
+    const stripe = getStripe();
     return await stripe.paymentIntents.create({
       amount: Math.round(parseFloat(amount) * 100), // Convert to cents
       currency: currency.toLowerCase(),
@@ -14,10 +22,12 @@ export const stripeAdapter = {
   },
 
   async capturePayment(paymentIntentId: string) {
+    const stripe = getStripe();
     return await stripe.paymentIntents.capture(paymentIntentId);
   },
 
   async refundPayment(paymentIntentId: string, amount?: string) {
+    const stripe = getStripe();
     const refundData: any = { payment_intent: paymentIntentId };
     if (amount) {
       refundData.amount = Math.round(parseFloat(amount) * 100);
@@ -26,6 +36,7 @@ export const stripeAdapter = {
   },
 
   async createPayout(destination: any, amount: string, currency: string) {
+    const stripe = getStripe();
     return await stripe.transfers.create({
       amount: Math.round(parseFloat(amount) * 100),
       currency: currency.toLowerCase(),
@@ -34,6 +45,7 @@ export const stripeAdapter = {
   },
 
   async verifyWebhook(payload: string, signature: string, secret: string) {
+    const stripe = getStripe();
     return stripe.webhooks.constructEvent(payload, signature, secret);
   }
 };
