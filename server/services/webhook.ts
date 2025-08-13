@@ -1,10 +1,10 @@
-import { storage } from "../storage";
+import { partnersRepository, gatewayTransactionsRepository, transactionsRepository, walletsRepository } from "../repositories";
 import { paymentGatewayService } from "./payment-gateway";
 import crypto from 'crypto';
 
 export class WebhookService {
   async handlePartnerWebhook(partnerId: string, event: string, data: any) {
-    const partner = await storage.getPartner(partnerId);
+    const partner = await partnersRepository.getById(partnerId);
     if (!partner || !partner.webhookUrl) {
       return; // No webhook configured
     }
@@ -45,7 +45,7 @@ export class WebhookService {
       
       if (eventData.type === 'payment_intent.succeeded' || eventData.type === 'charge.succeeded') {
         // Update transaction status
-        const gatewayTx = await storage.createGatewayTransaction({
+        const gatewayTx = await gatewayTransactionsRepository.create({
           gatewayTransactionId: eventData.data.object.id,
           gateway,
           status: 'completed',
@@ -57,18 +57,18 @@ export class WebhookService {
 
         // If transaction ID is available, update our transaction
         if (eventData.data.object.metadata?.transactionId) {
-          await storage.updateTransactionStatus(
+          await transactionsRepository.updateStatus(
             eventData.data.object.metadata.transactionId,
             'completed',
             eventData.data.object.id
           );
 
           // Notify partner via webhook
-          const transaction = await storage.getTransaction(eventData.data.object.metadata.transactionId);
+          const transaction = await transactionsRepository.getById(eventData.data.object.metadata.transactionId);
           if (transaction) {
             const wallet = transaction.toWalletId 
-              ? await storage.getWallet(transaction.toWalletId)
-              : await storage.getWallet(transaction.fromWalletId!);
+              ? await walletsRepository.getById(transaction.toWalletId)
+              : await walletsRepository.getById(transaction.fromWalletId!);
             
             if (wallet) {
               await this.handlePartnerWebhook(wallet.partnerId, 'transaction.completed', {
