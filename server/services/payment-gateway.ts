@@ -1,6 +1,6 @@
 import { stripeAdapter } from "../adapters/stripe-adapter";
 import { mockAdapter } from "../adapters/mock-adapter";
-import { storage } from "../storage";
+import { walletsRepository, transactionsRepository, gatewayTransactionsRepository } from "../repositories";
 import type { Payout } from "@shared/schema";
 
 interface PaymentGatewayAdapter {
@@ -31,7 +31,7 @@ export class PaymentGatewayService {
     const adapter = this.getAdapter(gateway);
     
     // Validate wallet has sufficient balance
-    const balance = await storage.getWalletBalance(data.walletId);
+    const balance = await walletsRepository.getBalance(data.walletId);
     if (parseFloat(balance) < parseFloat(data.amount)) {
       throw new Error('Insufficient balance for payout');
     }
@@ -44,7 +44,7 @@ export class PaymentGatewayService {
     );
 
     // Create transaction record
-    const transaction = await storage.createTransaction({
+    const transaction = await transactionsRepository.create({
       type: 'debit',
       amount: data.amount,
       currency: data.currency,
@@ -54,7 +54,7 @@ export class PaymentGatewayService {
     });
 
     // Create gateway transaction record
-    await storage.createGatewayTransaction({
+    await gatewayTransactionsRepository.create({
       gatewayTransactionId: gatewayPayout.id,
       gateway,
       status: gatewayPayout.status,
