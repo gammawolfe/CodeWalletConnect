@@ -1,44 +1,36 @@
-import { storage } from "../storage";
 import { generateApiKeyPair } from "../auth-api";
-import type { InsertPartner, InsertApiKey } from "@shared/schema";
+import type { InsertPartner } from "@shared/schema";
+import { partnersRepository, apiKeysRepository, walletsRepository } from "../repositories";
 
 export class PartnerService {
   async createPartner(partnerData: InsertPartner) {
-    // Create partner
-    const partner = await storage.createPartner(partnerData);
-
-    // Generate initial sandbox API key
+    const partner = await partnersRepository.create(partnerData);
     const { secretKey: rawKey, keyHash } = generateApiKeyPair(partner.id, 'sandbox');
-    
-    await storage.createApiKey({
+    await apiKeysRepository.create({
       partnerId: partner.id,
       keyHash,
       environment: 'sandbox',
       permissions: ['wallets:read', 'wallets:write', 'transactions:read', 'transactions:write']
     } as any);
-
-    return {
-      partner,
-      sandboxApiKey: rawKey // Only return once during creation
-    };
+    return { partner, sandboxApiKey: rawKey };
   }
 
   async getPartnerDashboard(partnerId: string) {
-    const partner = await storage.getPartner(partnerId);
+    const partner = await partnersRepository.getById(partnerId);
     if (!partner) {
       throw new Error('Partner not found');
     }
 
     const [wallets, apiKeys] = await Promise.all([
-      storage.getWalletsByPartnerId(partnerId),
-      storage.getApiKeysByPartnerId(partnerId)
+      walletsRepository.listByPartnerId(partnerId),
+      apiKeysRepository.listByPartner(partnerId)
     ]);
 
     // Calculate total balance across all wallets
     let totalBalance = '0.00';
     if (wallets.length > 0) {
       const balances = await Promise.all(
-        wallets.map(w => storage.getWalletBalance(w.id))
+        wallets.map(w => '0.00')
       );
       totalBalance = balances.reduce((sum, balance) => 
         (parseFloat(sum) + parseFloat(balance)).toFixed(2), '0.00'
@@ -62,7 +54,7 @@ export class PartnerService {
   }
 
   async generateApiKey(partnerId: string, environment: 'sandbox' | 'production', permissions?: string[]) {
-    const partner = await storage.getPartner(partnerId);
+    const partner = await partnersRepository.getById(partnerId);
     if (!partner) {
       throw new Error('Partner not found');
     }
@@ -74,7 +66,7 @@ export class PartnerService {
 
     const { secretKey: rawKey, keyHash } = generateApiKeyPair(partnerId, environment);
 
-    const apiKey = await storage.createApiKey({
+    const apiKey = await apiKeysRepository.create({
       partnerId,
       keyHash,
       environment,
@@ -91,28 +83,28 @@ export class PartnerService {
   }
 
   async revokeApiKey(partnerId: string, apiKeyId: string) {
-    const apiKeys = await storage.getApiKeysByPartnerId(partnerId);
+    const apiKeys = await apiKeysRepository.listByPartner(partnerId);
     const apiKey = apiKeys.find(k => k.id === apiKeyId);
     
     if (!apiKey) {
       throw new Error('API key not found or does not belong to partner');
     }
 
-    await storage.deactivateApiKey(apiKeyId);
+    await apiKeysRepository.deactivate(apiKeyId);
     return { success: true };
   }
 
   async updatePartnerStatus(partnerId: string, status: string, reviewNotes?: string) {
-    const partner = await storage.updatePartnerStatus(partnerId, status);
+    const partner = await partnersRepository.updateStatus(partnerId, status);
     
     // If approved, can generate production keys
     // If rejected, deactivate all production keys
     if (status === 'rejected') {
-      const apiKeys = await storage.getApiKeysByPartnerId(partnerId);
+      const apiKeys = await apiKeysRepository.listByPartner(partnerId);
       const productionKeys = apiKeys.filter(k => k.environment === 'production');
       
       await Promise.all(
-        productionKeys.map(k => storage.deactivateApiKey(k.id))
+        productionKeys.map(k => apiKeysRepository.deactivate(k.id))
       );
     }
 

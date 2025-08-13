@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { storage } from './storage';
+import { apiKeysRepository, partnersRepository, walletsRepository } from './repositories';
 import type { Partner, ApiKey } from '@shared/schema';
 
 // Extend Express Request to include partner info
@@ -73,7 +73,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     const keyHash = hashApiKey(apiKey);
     
     // Look up the API key in database
-    const storedApiKey = await storage.getApiKey(keyHash);
+    const storedApiKey = await apiKeysRepository.getByHash(keyHash);
     
     if (!storedApiKey || !storedApiKey.isActive) {
       return res.status(401).json({ 
@@ -89,7 +89,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     }
     
     // Get the partner associated with this API key
-    const partner = await storage.getPartner(storedApiKey.partnerId);
+    const partner = await partnersRepository.getById(storedApiKey.partnerId);
     
     if (!partner || partner.status !== 'approved') {
       return res.status(401).json({ 
@@ -98,7 +98,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     }
     
     // Update last used timestamp
-    await storage.updateApiKeyLastUsed(storedApiKey.id);
+    await apiKeysRepository.touchLastUsed(storedApiKey.id);
     
     // Attach partner and API key info to request
     req.partner = partner;
@@ -150,7 +150,7 @@ export async function validateWalletOwnership(req: Request, res: Response, next:
       return res.status(400).json({ error: 'Wallet ID is required' });
     }
     
-    const wallet = await storage.getWallet(walletId);
+    const wallet = await walletsRepository.getById(walletId);
     
     if (!wallet) {
       return res.status(404).json({ error: 'Wallet not found' });
