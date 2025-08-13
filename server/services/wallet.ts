@@ -1,6 +1,7 @@
 import { storage } from "../storage";
 import { transactionService } from "./transaction";
 import type { InsertWallet } from "@shared/schema";
+import { walletsRepository, partnersRepository } from "../repositories";
 
 interface PartnerWalletRequest {
   partnerId: string;
@@ -10,14 +11,14 @@ interface PartnerWalletRequest {
 
 export class WalletService {
   async getOrCreateClearingWallet(partnerId: string) {
-    const partner = await storage.getPartner(partnerId);
+    const partner = await partnersRepository.getById(partnerId);
     const existingClearingWalletId = (partner as any)?.settings?.clearingWalletId as string | undefined;
     if (existingClearingWalletId) {
-      const existing = await storage.getWallet(existingClearingWalletId);
+      const existing = await walletsRepository.getById(existingClearingWalletId);
       if (existing) return existing;
     }
 
-    const clearingWallet = await storage.createWallet({
+    const clearingWallet = await walletsRepository.create({
       partnerId,
       name: "Clearing",
       currency: 'USD',
@@ -25,7 +26,7 @@ export class WalletService {
     } as unknown as Omit<InsertWallet, 'partnerId'> & { partnerId: string });
 
     const currentSettings = ((partner as any)?.settings || {}) as Record<string, any>;
-    await storage.updatePartnerSettings(partnerId, {
+    await partnersRepository.updateSettings(partnerId, {
       ...currentSettings,
       clearingWalletId: clearingWallet.id,
     });
@@ -33,7 +34,7 @@ export class WalletService {
     return clearingWallet;
   }
   async createWallet(partnerId: string, walletData: Omit<InsertWallet, 'partnerId'>) {
-    return await storage.createWallet({
+    return await walletsRepository.create({
       partnerId,
       ...walletData,
       currency: walletData.currency || 'USD'
@@ -42,7 +43,7 @@ export class WalletService {
 
   async getPartnerWallet(request: PartnerWalletRequest) {
     if (request.walletId) {
-      const wallet = await storage.getWallet(request.walletId);
+      const wallet = await walletsRepository.getById(request.walletId);
       if (!wallet || wallet.partnerId !== request.partnerId) {
         throw new Error('Wallet not found or access denied');
       }
@@ -50,14 +51,14 @@ export class WalletService {
     }
     
     if (request.externalWalletId) {
-      return await storage.getWalletByExternalId(request.partnerId, request.externalWalletId);
+      return await walletsRepository.getByExternalId(request.partnerId, request.externalWalletId);
     }
     
     throw new Error('Must provide either walletId or externalWalletId');
   }
 
   async getPartnerWallets(partnerId: string) {
-    return await storage.getWalletsByPartnerId(partnerId);
+    return await walletsRepository.listByPartnerId(partnerId);
   }
 
   async getWalletBalance(partnerId: string, walletId: string) {
@@ -66,7 +67,7 @@ export class WalletService {
       throw new Error('Wallet not found or access denied');
     }
 
-    const balance = await storage.getWalletBalance(walletId);
+    const balance = await walletsRepository.getBalance(walletId);
     return {
       walletId,
       balance,
@@ -99,7 +100,7 @@ export class WalletService {
     idempotencyKey: string;
   }) {
     // Check balance first
-    const balance = await storage.getWalletBalance(data.walletId);
+    const balance = await walletsRepository.getBalance(data.walletId);
     if (parseFloat(balance) < parseFloat(data.amount)) {
       throw new Error('Insufficient balance');
     }
@@ -123,7 +124,7 @@ export class WalletService {
     idempotencyKey: string;
   }) {
     // Check balance first
-    const balance = await storage.getWalletBalance(data.fromWalletId);
+    const balance = await walletsRepository.getBalance(data.fromWalletId);
     if (parseFloat(balance) < parseFloat(data.amount)) {
       throw new Error('Insufficient balance');
     }
