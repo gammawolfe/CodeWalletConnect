@@ -176,18 +176,4 @@ export function requireAuth(req: any, res: any, next: any) {
 }
 
 // Middleware for API key authentication
-export function requireApiKey(req: any, res: any, next: any) {
-  const apiKey = req.headers['x-api-key'];
-  
-  if (!apiKey) {
-    return res.status(401).json({ message: 'API key required' });
-  }
-
-  // In a real implementation, validate the API key against a database
-  // For now, just check against environment variable
-  if (apiKey !== process.env.API_KEY) {
-    return res.status(401).json({ message: 'Invalid API key' });
-  }
-
-  next();
-}
+// NOTE: API key authentication for B2B endpoints lives in `server/auth-api.ts`.
