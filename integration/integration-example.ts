@@ -15,7 +15,7 @@ import type {
 
 // Example: Setting up the enhanced wallet service
 const walletService = createEnhancedWalletService({
-  payflowBaseUrl: 'http://localhost:5000', // Your PayFlow service URL
+  payflowBaseUrl: 'http://localhost:7000', // Your PayFlow service URL
   payflowApiKey: 'your-api-key-here',      // API key from PayFlow
   defaultCurrency: 'USD',
   enableRealPayments: false, // Set to true for production Stripe payments

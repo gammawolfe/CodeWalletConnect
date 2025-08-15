@@ -68,7 +68,7 @@ Complete working examples demonstrating:
 ### 1. Environment Setup
 ```bash
 # Add to your RoSaBank environment variables
-PAYFLOW_BASE_URL=http://localhost:5000
+PAYFLOW_BASE_URL=http://localhost:7000
 PAYFLOW_API_KEY=your_api_key_here
 ENABLE_REAL_PAYMENTS=false  # Set to true for production
 DEFAULT_CURRENCY=USD

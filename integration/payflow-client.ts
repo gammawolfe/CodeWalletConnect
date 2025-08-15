@@ -265,7 +265,7 @@ export function createPayFlowClient(config: {
   baseUrl?: string;
   apiKey: string;
 }): PayFlowClient {
-  const baseUrl = config.baseUrl || 'http://localhost:5000';
+  const baseUrl = config.baseUrl || 'http://localhost:3000';
   return new PayFlowClient({ baseUrl, apiKey: config.apiKey });
 }
 

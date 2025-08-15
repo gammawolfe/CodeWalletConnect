@@ -12,7 +12,7 @@ import type { ContributionRequest, PayoutRequest } from './enhanced-wallet-servi
 
 // Initialize enhanced wallet service
 const walletService = createEnhancedWalletService({
-  payflowBaseUrl: process.env.PAYFLOW_BASE_URL || 'http://localhost:5000',
+  payflowBaseUrl: process.env.PAYFLOW_BASE_URL || 'http://localhost:7000',
   payflowApiKey: process.env.PAYFLOW_API_KEY || '',
   defaultCurrency: 'USD',
   enableRealPayments: process.env.NODE_ENV === 'production',

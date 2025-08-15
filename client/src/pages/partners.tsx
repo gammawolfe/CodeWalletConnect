@@ -18,6 +18,7 @@ export default function Partners() {
   const { toast } = useToast()
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [newApiKey, setNewApiKey] = useState<any>(null)
 
   // Fetch partners
@@ -83,6 +84,36 @@ export default function Partners() {
     },
   })
 
+  // Create partner mutation
+  const createPartnerMutation = useMutation({
+    mutationFn: async (partnerData: {
+      name: string;
+      companyName: string;
+      email: string;
+      contactPerson: string;
+      businessType: string;
+      webhookUrl?: string;
+    }) => {
+      const res = await apiRequest('POST', '/api/admin/partners', partnerData)
+      return await res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/partners'] })
+      setShowOnboardingModal(false)
+      toast({
+        title: "Partner Created",
+        description: "New partner has been onboarded successfully",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    },
+  })
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800'
@@ -117,8 +148,19 @@ export default function Partners() {
       
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Partner Management</h1>
-          <p className="text-gray-600 mt-2">Manage B2B partners and their API integrations</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Partner Management</h1>
+              <p className="text-gray-600 mt-2">Manage B2B partners and their API integrations</p>
+            </div>
+            <Button
+              onClick={() => setShowOnboardingModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Partner
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -387,6 +429,24 @@ export default function Partners() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Partner Onboarding Modal */}
+        <Dialog open={showOnboardingModal} onOpenChange={setShowOnboardingModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Onboard New Partner</DialogTitle>
+              <DialogDescription>
+                Add a new B2B partner to the PayFlow platform
+              </DialogDescription>
+            </DialogHeader>
+            
+            <PartnerOnboardingForm
+              onSubmit={(data) => createPartnerMutation.mutate(data)}
+              isLoading={createPartnerMutation.isPending}
+              onCancel={() => setShowOnboardingModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
@@ -461,6 +521,154 @@ function ApiKeyForm({
       <div className="flex gap-2">
         <Button type="submit" disabled={isLoading} className="flex-1">
           {isLoading ? 'Generating...' : 'Generate API Key'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function PartnerOnboardingForm({ 
+  onSubmit, 
+  isLoading,
+  onCancel
+}: { 
+  onSubmit: (data: {
+    name: string;
+    companyName: string;
+    email: string;
+    contactPerson: string;
+    businessType: string;
+    webhookUrl?: string;
+  }) => void;
+  isLoading: boolean;
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: '',
+    companyName: '',
+    email: '',
+    contactPerson: '',
+    businessType: '',
+    webhookUrl: ''
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Basic validation
+    if (!formData.name || !formData.companyName || !formData.email || 
+        !formData.contactPerson || !formData.businessType) {
+      return
+    }
+
+    const submitData = {
+      ...formData,
+      webhookUrl: formData.webhookUrl || undefined
+    }
+    
+    onSubmit(submitData)
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="name">Partner Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            placeholder="e.g., RoSaBank"
+            required
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="companyName">Company Name *</Label>
+          <Input
+            id="companyName"
+            value={formData.companyName}
+            onChange={(e) => handleInputChange('companyName', e.target.value)}
+            placeholder="e.g., Rosa Bank Ltd."
+            required
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="contactPerson">Contact Person *</Label>
+          <Input
+            id="contactPerson"
+            value={formData.contactPerson}
+            onChange={(e) => handleInputChange('contactPerson', e.target.value)}
+            placeholder="John Smith"
+            required
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="email">Email *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            placeholder="contact@rosabank.com"
+            required
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="businessType">Business Type *</Label>
+        <Input
+          id="businessType"
+          value={formData.businessType}
+          onChange={(e) => handleInputChange('businessType', e.target.value)}
+          placeholder="e.g., Banking, FinTech, E-commerce"
+          required
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
+        <Input
+          id="webhookUrl"
+          type="url"
+          value={formData.webhookUrl}
+          onChange={(e) => handleInputChange('webhookUrl', e.target.value)}
+          placeholder="https://api.rosabank.com/webhooks/payflow"
+          className="mt-1"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          URL where PayFlow will send transaction notifications
+        </p>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={isLoading || !formData.name || !formData.companyName || 
+                   !formData.email || !formData.contactPerson || !formData.businessType} 
+          className="flex-1"
+        >
+          {isLoading ? 'Creating...' : 'Create Partner'}
         </Button>
       </div>
     </form>

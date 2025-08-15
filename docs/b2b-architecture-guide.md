@@ -241,7 +241,7 @@ Internet → Load Balancer → PayFlow API Servers
 
 ### Development Environment
 ```
-Local Development → PayFlow API (localhost:5000)
+Local Development → PayFlow API (localhost:3000)
                    ↓
               Local PostgreSQL
                    ↓

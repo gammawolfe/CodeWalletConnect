@@ -1,5 +1,5 @@
 import { Navigation } from "@/components/navigation";
-
+import { DashboardMetrics } from "@/components/dashboard-metrics";
 import { TransactionTable } from "@/components/transaction-table";
 
 export default function Dashboard() {
@@ -16,10 +16,10 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-8">
-          {/* Partner Overview will be implemented here */}
-        <div className="text-center py-8 text-gray-500">
-          B2B Partner metrics and system overview will be displayed here
-        </div>
+          <div className="bg-red-500 text-white p-4 rounded">
+            DEBUG: This should be visible if dashboard is rendering
+          </div>
+          <DashboardMetrics />
           <TransactionTable />
         </div>
       </div>

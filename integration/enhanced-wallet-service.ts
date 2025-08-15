@@ -403,7 +403,7 @@ export class EnhancedWalletService {
  */
 export function createEnhancedWalletService(config: Partial<WalletServiceConfig>): EnhancedWalletService {
   const defaultConfig: WalletServiceConfig = {
-    payflowBaseUrl: process.env.PAYFLOW_BASE_URL || 'http://localhost:5000',
+    payflowBaseUrl: process.env.PAYFLOW_BASE_URL || 'http://localhost:7000',
     payflowApiKey: process.env.PAYFLOW_API_KEY || '',
     defaultCurrency: 'USD',
     enableRealPayments: process.env.NODE_ENV === 'production',
