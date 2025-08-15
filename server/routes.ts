@@ -410,16 +410,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System monitoring (for PayFlow admin interface)
   app.get("/api/admin/system/stats", requireAuth, async (req, res, next) => {
     try {
+      // Prevent caching to ensure fresh data
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       // Get system statistics
       const partners = await partnersRepository.list();
       const activePartners = partners.filter(p => p.status === 'approved').length;
+      
+      // Get wallet statistics across all partners
+      let totalWallets = 0;
+      let totalUserWallets = 0;
+      let totalGroupWallets = 0;
+      
+      console.log('Getting wallet stats for', partners.length, 'partners');
+      
+      try {
+        for (const partner of partners) {
+          console.log('Getting wallet stats for partner:', partner.id);
+          const walletStats = await walletsRepository.getStatsByPartnerId(partner.id);
+          console.log('Wallet stats for partner', partner.id, ':', walletStats);
+          totalWallets += walletStats.totalWallets;
+          totalUserWallets += walletStats.userWallets;
+          totalGroupWallets += walletStats.groupWallets;
+        }
+      } catch (walletError) {
+        console.error('Error getting wallet stats:', walletError);
+        // Continue with zero values if wallet stats fail
+      }
+      
+      console.log('Final wallet totals:', { totalWallets, totalUserWallets, totalGroupWallets });
       
       res.json({
         totalPartners: partners.length,
         activePartners,
         pendingPartners: partners.filter(p => p.status === 'pending').length,
         suspendedPartners: partners.filter(p => p.status === 'suspended').length,
-        // Add more metrics as needed
+        totalWallets,
+        userWallets: totalUserWallets,
+        groupWallets: totalGroupWallets,
       });
     } catch (error) {
       next(error);

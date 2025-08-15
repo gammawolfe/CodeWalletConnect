@@ -7,7 +7,7 @@ Add these environment variables to your RoSaBank project to enable PayFlow integ
 ### PayFlow Service Configuration
 ```bash
 # PayFlow API Configuration
-PAYFLOW_BASE_URL=http://localhost:5000  # URL of your PayFlow service
+PAYFLOW_BASE_URL=http://localhost:7000  # URL of your PayFlow service
 PAYFLOW_API_KEY=your_payflow_api_key_here  # API key for PayFlow service
 
 # PayFlow Feature Flags
@@ -39,13 +39,13 @@ First, ensure your PayFlow service is running and accessible:
 
 2. **Verify PayFlow is running:**
    ```bash
-   curl http://localhost:5000/api/health
+   curl http://localhost:7000/api/health
    ```
 
 3. **Create API Key for RoSaBank:**
    ```bash
    # In PayFlow, create an API key for RoSaBank integration
-   curl -X POST http://localhost:5000/api/auth/api-keys \
+   curl -X POST http://localhost:7000/api/auth/api-keys \
      -H "Content-Type: application/json" \
      -d '{"name": "RoSaBank Integration", "permissions": ["wallet:read", "wallet:write", "transaction:read", "transaction:write"]}'
    ```
