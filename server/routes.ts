@@ -14,15 +14,17 @@ import { walletService } from "./services/wallet";
 import { transactionService } from "./services/transaction";
 import { paymentGatewayService } from "./services/payment-gateway";
 // storage removed in favor of repositories
-import { partnersRepository, apiKeysRepository } from "./repositories";
+import { partnersRepository, apiKeysRepository, fundingSessionsRepository } from "./repositories";
 import { walletsRepository } from "./repositories";
+import { fundingService } from "./services/funding";
 import { 
   insertPartnerSchema,
   insertWalletSchema, 
   creditWalletSchema, 
   debitWalletSchema, 
   transferSchema, 
-  payoutSchema 
+  payoutSchema,
+  createFundingSessionSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -98,6 +100,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Apply rate limiting to all API routes
   app.use('/api/v1', rateLimit(1000)); // 1000 requests per minute
+  
+  // Public endpoint for funding session data (no auth required)
+  app.get("/api/public/funding/sessions/:sessionId", async (req, res, next) => {
+    try {
+      const { sessionId } = req.params;
+      const session = await fundingService.getFundingSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: 'Funding session not found' });
+      }
+
+      // Check if session is expired
+      if (new Date() > new Date(session.expiresAt)) {
+        await fundingSessionsRepository.updateStatus(sessionId, 'expired');
+        return res.status(410).json({ error: 'Funding session has expired' });
+      }
+
+      // For public access, we need the Stripe client secret
+      // We'll need to retrieve it from Stripe using the payment intent ID
+      let clientSecret = null;
+      try {
+        // Import Stripe dynamically in ESM
+        const { default: Stripe } = await import('stripe');
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        if (stripeKey) {
+          const stripe = new Stripe(stripeKey, {
+            apiVersion: (process.env.STRIPE_API_VERSION as any) || "2025-07-30.basil",
+          });
+          const paymentIntent = await stripe.paymentIntents.retrieve(session.paymentIntentId);
+          clientSecret = paymentIntent.client_secret;
+        }
+      } catch (error) {
+        console.error('Failed to retrieve Stripe client secret:', error);
+      }
+
+      res.json({
+        id: session.id,
+        status: session.status,
+        amount: parseFloat(session.amount),
+        currency: session.currency,
+        walletId: session.walletId,
+        expiresAt: session.expiresAt.toISOString(),
+        metadata: session.metadata,
+        clientSecret // Include for Stripe integration
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Partner Wallet Management
   app.post("/api/v1/wallets", 
@@ -285,6 +336,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Wallet funding routes (API Key auth)
+  app.post("/api/v1/wallets/:walletId/fund",
+    requireApiKey,
+    requirePermission('wallets:write'),
+    validateWalletOwnership,
+    async (req: any, res, next) => {
+      try {
+        const data = createFundingSessionSchema.parse(req.body);
+        const walletId = req.params.walletId;
+        
+        const session = await fundingService.createFundingSession(
+          req.partner.id,
+          walletId,
+          data
+        );
+
+        res.status(201).json({
+          id: session.id,
+          url: fundingService.getPaymentUrl(session.id),
+          status: session.status,
+          amount: parseFloat(session.amount),
+          currency: session.currency,
+          walletId: session.walletId,
+          expiresAt: session.expiresAt.toISOString(),
+          metadata: session.metadata
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.get("/api/v1/funding/sessions/:sessionId",
+    requireApiKey,
+    requirePermission('wallets:read'),
+    async (req: any, res, next) => {
+      try {
+        const { sessionId } = req.params;
+        const session = await fundingService.getFundingSession(sessionId);
+        
+        if (!session) {
+          return res.status(404).json({ error: 'Funding session not found' });
+        }
+
+        // Verify the session's wallet belongs to the requesting partner
+        const wallet = await walletsRepository.getById(session.walletId);
+        if (!wallet || wallet.partnerId !== req.partner.id) {
+          return res.status(404).json({ error: 'Funding session not found' });
+        }
+
+        res.json({
+          id: session.id,
+          url: fundingService.getPaymentUrl(session.id),
+          status: session.status,
+          amount: parseFloat(session.amount),
+          currency: session.currency,
+          walletId: session.walletId,
+          expiresAt: session.expiresAt.toISOString(),
+          metadata: session.metadata
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   // =====================================
   // Webhook Endpoints
   // =====================================
@@ -403,6 +520,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await apiKeysRepository.deactivate(keyId);
       res.json({ message: 'API key deactivated' });
     } catch (error) {
+      next(error);
+    }
+  });
+
+  // Wallet Management (for PayFlow admin interface)
+  app.get("/api/admin/wallets", requireAuth, async (req, res, next) => {
+    try {
+      console.log('🔍 Wallets endpoint hit:', req.query);
+      
+      const { 
+        page = 1, 
+        pageSize = 25, 
+        search = '', 
+        partnerId = '', 
+        type = 'all' 
+      } = req.query;
+      
+      const pageNum = parseInt(page as string);
+      const pageSizeNum = parseInt(pageSize as string);
+      const offset = (pageNum - 1) * pageSizeNum;
+
+      console.log('📊 Getting partners for reference...');
+      const partners = await partnersRepository.list();
+      console.log('👥 Found partners:', partners.length);
+      const partnerMap = new Map(partners.map(p => [p.id, p]));
+
+      let allWallets: any[] = [];
+      
+      // If filtering by specific partner, only get that partner's wallets
+      if (partnerId && partnerId !== 'all') {
+        console.log('🎯 Getting wallets for specific partner:', partnerId);
+        const wallets = await walletsRepository.listByPartnerId(partnerId as string);
+        allWallets = wallets.map(wallet => ({
+          ...wallet,
+          partner: partnerMap.get(wallet.partnerId)
+        }));
+        console.log('💰 Found wallets for partner:', allWallets.length);
+      } else {
+        // Get all wallets at once - much simpler!
+        console.log('🌍 Getting all wallets from database...');
+        const wallets = await walletsRepository.listAll();
+        allWallets = wallets.map(wallet => ({
+          ...wallet,
+          partner: partnerMap.get(wallet.partnerId)
+        }));
+        console.log('💰 Total wallets found:', allWallets.length);
+      }
+
+      let filteredWallets: any[] = [];
+
+      // Apply filters
+      filteredWallets = allWallets.filter(wallet => {
+        // Search filter
+        const searchLower = (search as string).toLowerCase();
+        const matchesSearch = !search || 
+          wallet.name?.toLowerCase().includes(searchLower) ||
+          wallet.externalWalletId?.toLowerCase().includes(searchLower) ||
+          wallet.externalUserId?.toLowerCase().includes(searchLower) ||
+          wallet.id.toLowerCase().includes(searchLower);
+
+        // Type filter
+        const matchesType = type === 'all' ||
+          (type === 'user' && wallet.externalUserId !== null) ||
+          (type === 'group' && wallet.externalUserId === null);
+
+        return matchesSearch && matchesType;
+      });
+
+      // Get balances for filtered wallets (only for current page to optimize performance)
+      const paginatedWallets = filteredWallets.slice(offset, offset + pageSizeNum);
+      console.log('💸 Getting balances for', paginatedWallets.length, 'wallets...');
+      
+      const walletsWithBalance = await Promise.all(
+        paginatedWallets.map(async (wallet) => {
+          try {
+            const balance = await walletsRepository.getBalance(wallet.id);
+            return {
+              ...wallet,
+              balance
+            };
+          } catch (error) {
+            console.warn(`Failed to get balance for wallet ${wallet.id}:`, error);
+            return {
+              ...wallet,
+              balance: '0.00'
+            };
+          }
+        })
+      );
+      
+      console.log('💸 Balances fetched for', walletsWithBalance.length, 'wallets');
+
+      const totalWallets = filteredWallets.length;
+      const totalPages = Math.ceil(totalWallets / pageSizeNum);
+
+      res.json({
+        wallets: walletsWithBalance,
+        pagination: {
+          currentPage: pageNum,
+          pageSize: pageSizeNum,
+          totalWallets,
+          totalPages,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1
+        },
+        counts: {
+          all: allWallets.length,
+          user: allWallets.filter(w => w.externalUserId !== null).length,
+          group: allWallets.filter(w => w.externalUserId === null).length,
+        }
+      });
+      
+      console.log('✅ Sending response with', walletsWithBalance.length, 'wallets');
+    } catch (error) {
+      console.error('❌ Wallets endpoint error:', error);
       next(error);
     }
   });

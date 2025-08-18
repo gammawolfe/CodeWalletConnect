@@ -5,5 +5,6 @@ export { walletsRepository } from './wallets-repository';
 export { transactionsRepository } from './transactions-repository';
 export { ledgerRepository } from './ledger-repository';
 export { gatewayTransactionsRepository } from './gateway-transactions-repository';
+export { fundingSessionsRepository } from './funding-sessions-repository';
 
 

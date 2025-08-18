@@ -9,8 +9,10 @@ import Dashboard from "@/pages/dashboard";
 import ApiDocs from "@/pages/api-docs";
 import SystemStatus from "@/pages/system-status";
 import Partners from "@/pages/partners";
+import Wallets from "@/pages/wallets";
 import Monitoring from "@/pages/monitoring";
 import AuthPage from "@/pages/auth-page";
+import PaymentPage from "@/pages/payment-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,10 +21,12 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/partners" component={Partners} />
+      <ProtectedRoute path="/wallets" component={Wallets} />
       <ProtectedRoute path="/integrations" component={SystemStatus} />
       <ProtectedRoute path="/api-docs" component={ApiDocs} />
       <ProtectedRoute path="/monitoring" component={Monitoring} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/pay/:sessionId" component={PaymentPage} />
       <Route component={NotFound} />
     </Switch>
   );

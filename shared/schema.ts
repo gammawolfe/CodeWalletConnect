@@ -12,6 +12,7 @@ export const paymentGatewayEnum = pgEnum('payment_gateway', ['stripe', 'mock']);
 export const ledgerEntryTypeEnum = pgEnum('ledger_entry_type', ['debit', 'credit']);
 export const partnerStatusEnum = pgEnum('partner_status', ['pending', 'approved', 'suspended', 'rejected']);
 export const apiKeyEnvironmentEnum = pgEnum('api_key_environment', ['sandbox', 'production']);
+export const fundingSessionStatusEnum = pgEnum('funding_session_status', ['created', 'active', 'completed', 'failed', 'expired']);
 
 // Admin users table (for PayFlow admin interface)
 export const users = pgTable("users", {
@@ -114,6 +115,22 @@ export const gatewayTransactions = pgTable("gateway_transactions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Funding sessions for wallet funding flow
+export const fundingSessions = pgTable("payment_funding_sessions", {
+  id: varchar("id").primaryKey(),
+  walletId: varchar("wallet_id").notNull().references(() => wallets.id),
+  paymentIntentId: text("payment_intent_id").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default('USD'),
+  status: fundingSessionStatusEnum("status").notNull().default('created'),
+  successUrl: text("success_url"),
+  cancelUrl: text("cancel_url"),
+  expiresAt: timestamp("expires_at").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const partnersRelations = relations(partners, ({ many }) => ({
   wallets: many(wallets),
@@ -139,6 +156,7 @@ export const walletsRelations = relations(wallets, ({ one, many }) => ({
   transactionsTo: many(transactions, {
     relationName: "toWallet",
   }),
+  fundingSessions: many(fundingSessions),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one, many }) => ({
@@ -162,6 +180,13 @@ export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
   }),
   wallet: one(wallets, {
     fields: [ledgerEntries.walletId],
+    references: [wallets.id],
+  }),
+}));
+
+export const fundingSessionsRelations = relations(fundingSessions, ({ one }) => ({
+  wallet: one(wallets, {
+    fields: [fundingSessions.walletId],
     references: [wallets.id],
   }),
 }));
@@ -248,6 +273,28 @@ export const payoutSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
 
+export const createFundingSessionSchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().default('USD'),
+  description: z.string().optional(),
+  successUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const insertFundingSessionSchema = createInsertSchema(fundingSessions).pick({
+  id: true,
+  walletId: true,
+  paymentIntentId: true,
+  amount: true,
+  currency: true,
+  status: true,
+  successUrl: true,
+  cancelUrl: true,
+  expiresAt: true,
+  metadata: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -265,3 +312,6 @@ export type CreditWallet = z.infer<typeof creditWalletSchema>;
 export type DebitWallet = z.infer<typeof debitWalletSchema>;
 export type Transfer = z.infer<typeof transferSchema>;
 export type Payout = z.infer<typeof payoutSchema>;
+export type CreateFundingSession = z.infer<typeof createFundingSessionSchema>;
+export type InsertFundingSession = z.infer<typeof insertFundingSessionSchema>;
+export type FundingSession = typeof fundingSessions.$inferSelect;

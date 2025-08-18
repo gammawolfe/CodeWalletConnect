@@ -21,6 +21,15 @@ export const stripeAdapter = {
     });
   },
 
+  async createPaymentIntentFromNumber(amount: number, currency: string, metadata?: any) {
+    const stripe = getStripe();
+    return await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: currency.toLowerCase(),
+      metadata
+    });
+  },
+
   async capturePayment(paymentIntentId: string) {
     const stripe = getStripe();
     return await stripe.paymentIntents.capture(paymentIntentId);

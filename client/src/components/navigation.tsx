@@ -18,6 +18,7 @@ export function Navigation() {
   const navigationItems = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/partners", label: "Partners" },
+    { href: "/wallets", label: "Wallets" },
     { href: "/integrations", label: "System Status" },
     { href: "/api-docs", label: "API Docs" },
     { href: "/monitoring", label: "Monitoring" },
