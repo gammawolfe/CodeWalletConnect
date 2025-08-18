@@ -121,7 +121,7 @@ export default function Wallets() {
   const { data: walletsData, isLoading: walletsLoading, error } = useQuery({
     queryKey: ['wallets', currentPage, pageSize, searchTerm, selectedPartner, activeTab],
     queryFn: () => fetchWallets(currentPage, pageSize, searchTerm, selectedPartner, activeTab),
-    keepPreviousData: true, // Keep showing previous data while fetching new data
+    placeholderData: (previousData) => previousData, // Keep showing previous data while fetching new data
   });
 
   // Debug logging
