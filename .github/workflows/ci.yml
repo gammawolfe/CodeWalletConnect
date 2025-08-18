@@ -13,6 +13,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,13 +45,16 @@ jobs:
         run: |
           echo "DATABASE_URL=postgres://test:test@localhost:5432/test" >> .env
 
+      - name: Setup database schema
+        run: npm run db:push
+
       - name: Type check
         run: npm run check
 
       - name: Build
         run: npm run build
 
-      - name: Run tests (if present)
-        run: npm test --if-present
+      - name: Run tests
+        run: npm test
 
 
