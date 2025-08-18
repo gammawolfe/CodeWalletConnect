@@ -12,9 +12,28 @@ export class LedgerRepository {
     currency: string;
     description?: string;
   }): Promise<LedgerEntry> {
+    // Get the current balance for this wallet
+    const [currentEntry] = await db
+      .select({ balance: ledgerEntries.balance })
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.walletId, entry.walletId))
+      .orderBy(desc(ledgerEntries.createdAt))
+      .limit(1);
+
+    // Calculate new balance using precise decimal arithmetic
+    const currentBalance = parseFloat(currentEntry?.balance || '0.00');
+    const entryAmount = parseFloat(entry.amount);
+    const newBalance = entry.type === 'credit' 
+      ? currentBalance + entryAmount
+      : currentBalance - entryAmount;
+
+    // Create the ledger entry with calculated balance
     const [e] = await db
       .insert(ledgerEntries)
-      .values(entry as any)
+      .values({
+        ...entry,
+        balance: newBalance.toFixed(2)
+      })
       .returning();
     return e;
   }

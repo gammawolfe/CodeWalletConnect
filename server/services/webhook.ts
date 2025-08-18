@@ -1,5 +1,6 @@
 import { partnersRepository, gatewayTransactionsRepository, transactionsRepository, walletsRepository } from "../repositories";
 import { paymentGatewayService } from "./payment-gateway";
+import { fundingService } from "./funding";
 import crypto from 'crypto';
 
 export class WebhookService {
@@ -43,42 +44,78 @@ export class WebhookService {
       // For now, handle basic webhook structure - this would be gateway-specific
       const eventData = JSON.parse(payload);
       
-      if (eventData.type === 'payment_intent.succeeded' || eventData.type === 'charge.succeeded') {
-        // Update transaction status
-        const gatewayTx = await gatewayTransactionsRepository.create({
-          gatewayTransactionId: eventData.data.object.id,
-          gateway,
-          status: 'completed',
-          amount: (eventData.data.object.amount / 100).toString(), // Stripe sends amounts in cents
-          currency: eventData.data.object.currency.toUpperCase(),
-          webhookData: eventData,
-          transactionId: eventData.data.object.metadata?.transactionId
-        });
+      if (eventData.type === 'payment_intent.succeeded') {
+        const paymentIntent = eventData.data.object;
+        const metadata = paymentIntent.metadata || {};
+        
+        // Check if this is a funding session payment
+        if (metadata.session_type === 'funding') {
+          try {
+            // Process funding session success
+            await fundingService.processFundingSuccess(paymentIntent.id);
+            console.log(`Successfully processed funding for payment intent ${paymentIntent.id}`);
+          } catch (error) {
+            console.error(`Failed to process funding for payment intent ${paymentIntent.id}:`, error);
+            throw error;
+          }
+        } else {
+          // Handle regular transaction completion (existing logic)
+          // Update transaction status
+          const gatewayTx = await gatewayTransactionsRepository.create({
+            gatewayTransactionId: paymentIntent.id,
+            gateway,
+            status: 'completed',
+            amount: (paymentIntent.amount_received / 100).toString(), // Stripe sends amounts in cents
+            currency: paymentIntent.currency.toUpperCase(),
+            webhookData: eventData,
+            transactionId: metadata.transactionId
+          });
 
-        // If transaction ID is available, update our transaction
-        if (eventData.data.object.metadata?.transactionId) {
-          await transactionsRepository.updateStatus(
-            eventData.data.object.metadata.transactionId,
-            'completed',
-            eventData.data.object.id
-          );
+          // If transaction ID is available, update our transaction
+          if (metadata.transactionId) {
+            await transactionsRepository.updateStatus(
+              metadata.transactionId,
+              'completed',
+              paymentIntent.id
+            );
 
-          // Notify partner via webhook
-          const transaction = await transactionsRepository.getById(eventData.data.object.metadata.transactionId);
-          if (transaction) {
-            const wallet = transaction.toWalletId 
-              ? await walletsRepository.getById(transaction.toWalletId)
-              : await walletsRepository.getById(transaction.fromWalletId!);
-            
-            if (wallet) {
-              await this.handlePartnerWebhook(wallet.partnerId, 'transaction.completed', {
-                transactionId: transaction.id,
-                amount: transaction.amount,
-                currency: transaction.currency,
-                walletId: wallet.id,
-                externalWalletId: wallet.externalWalletId
-              });
+            // Notify partner via webhook
+            const transaction = await transactionsRepository.getById(metadata.transactionId);
+            if (transaction) {
+              const wallet = transaction.toWalletId 
+                ? await walletsRepository.getById(transaction.toWalletId)
+                : await walletsRepository.getById(transaction.fromWalletId!);
+              
+              if (wallet) {
+                await this.handlePartnerWebhook(wallet.partnerId, 'transaction.completed', {
+                  transactionId: transaction.id,
+                  amount: transaction.amount,
+                  currency: transaction.currency,
+                  walletId: wallet.id,
+                  externalWalletId: wallet.externalWalletId
+                });
+              }
             }
+          }
+        }
+      }
+
+      // Handle payment intent failure for funding sessions
+      if (eventData.type === 'payment_intent.payment_failed') {
+        const paymentIntent = eventData.data.object;
+        const metadata = paymentIntent.metadata || {};
+        
+        if (metadata.session_type === 'funding') {
+          // Find and mark funding session as failed
+          try {
+            const fundingSessionsRepository = await import("../repositories/funding-sessions-repository");
+            const session = await fundingSessionsRepository.fundingSessionsRepository.getByPaymentIntentId(paymentIntent.id);
+            if (session) {
+              await fundingService.markSessionFailed(session.id);
+              console.log(`Marked funding session ${session.id} as failed due to payment failure`);
+            }
+          } catch (error) {
+            console.error(`Failed to mark funding session as failed for payment intent ${paymentIntent.id}:`, error);
           }
         }
       }

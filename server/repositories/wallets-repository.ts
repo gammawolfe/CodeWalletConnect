@@ -13,6 +13,10 @@ export class WalletsRepository {
     return await db.select().from(wallets).where(eq(wallets.partnerId, partnerId));
   }
 
+  async listAll(): Promise<Wallet[]> {
+    return await db.select().from(wallets);
+  }
+
   async getByExternalId(partnerId: string, externalWalletId: string): Promise<Wallet | undefined> {
     const [wallet] = await db
       .select()
