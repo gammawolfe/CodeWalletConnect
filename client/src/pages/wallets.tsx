@@ -72,36 +72,28 @@ async function fetchWallets(
     type,
   });
 
-  console.log('Fetching wallets with params:', { page, pageSize, search, partnerId, type });
 
   const response = await fetch(`/api/admin/wallets?${params}`, {
     credentials: 'include',
   });
   
-  console.log('Wallets API response status:', response.status);
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Wallets API error:', response.status, errorText);
     throw new Error(`Failed to fetch wallets: ${response.status} ${errorText}`);
   }
   
   // Check if response is actually JSON
   const responseText = await response.text();
-  console.log('Raw response text:', responseText.substring(0, 200) + '...');
   
   if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
-    console.error('Received HTML instead of JSON - likely authentication issue');
     throw new Error('Authentication required - received HTML instead of JSON');
   }
   
   try {
     const data = JSON.parse(responseText);
-    console.log('Wallets API response data:', data);
     return data;
   } catch (parseError) {
-    console.error('JSON parse error:', parseError);
-    console.error('Response text:', responseText);
     throw new Error('Invalid JSON response from server');
   }
 }
@@ -121,17 +113,9 @@ export default function Wallets() {
   const { data: walletsData, isLoading: walletsLoading, error } = useQuery({
     queryKey: ['wallets', currentPage, pageSize, searchTerm, selectedPartner, activeTab],
     queryFn: () => fetchWallets(currentPage, pageSize, searchTerm, selectedPartner, activeTab),
-    keepPreviousData: true, // Keep showing previous data while fetching new data
+    placeholderData: (previousData) => previousData, // Keep showing previous data while fetching new data
   });
 
-  // Debug logging
-  console.log('Wallets Query State:', {
-    isLoading: walletsLoading,
-    error,
-    walletsData,
-    walletCount: walletsData?.wallets?.length || 0,
-    totalWallets: walletsData?.pagination?.totalWallets || 0
-  });
 
   const wallets = walletsData?.wallets || [];
   const pagination = walletsData?.pagination;

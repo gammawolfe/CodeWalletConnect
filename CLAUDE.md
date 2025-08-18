@@ -15,11 +15,6 @@ PayFlow is a B2B financial infrastructure platform that provides wallet manageme
 - `npm run build` - Build both frontend and backend for production
 - `npm run start` - Start production server
 
-### Testing
-- `npm test` - Run all tests once
-- `npm run test:watch` - Run tests in watch mode
-- `npm run coverage` - Run tests with coverage report
-
 ### Database
 - `npm run db:push` - Push schema changes to database using Drizzle
 - `npm run check` - Run TypeScript type checking
@@ -32,7 +27,6 @@ PayFlow is a B2B financial infrastructure platform that provides wallet manageme
 - **Database**: PostgreSQL with Drizzle ORM
 - **UI Components**: Radix UI primitives with custom design system
 - **Styling**: TailwindCSS with custom component library
-- **Testing**: Vitest with coverage
 - **Payment Gateway**: Stripe integration
 
 ### Project Structure
@@ -90,20 +84,6 @@ Business logic is implemented in service classes under `server/services/`. Servi
 - `CORS_ORIGIN` - Allowed origins for CORS (defaults to allow all)
 - `PORT` - Server port (defaults to 3000)
 - `STRIPE_API_VERSION` - Stripe API version
-
-## Testing Standards
-
-### Test Location
-- Tests should be placed in `__tests__` directories within the relevant modules
-- Example: `server/repositories/__tests__/users-repository.test.ts`
-
-### Test Configuration
-- Vitest is configured to load dotenv automatically
-- Test database URL can be set via `DATABASE_URL` environment variable
-- Tests run in Node.js environment with globals enabled
-
-### Coverage Requirements
-Run `npm run coverage` to ensure adequate test coverage for new code, especially in repositories and services.
 
 ## API Integration Patterns
 
