@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Development files
+.git/
+.gitignore
+README.md
+*.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage/
+test-results/
+**/*.test.ts
+**/*.test.js
+**/__tests__/
+
+# Build artifacts (will be copied from builder stage)
+dist/
+
+# CI/CD files
+.github/
+.dockerignore
+Dockerfile
+
+# Development configuration
+.replit
+replit.nix
+vitest.config.ts
+tsconfig.json
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
