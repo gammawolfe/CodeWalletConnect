@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import {
-  createWalletSchema,
-  createTransactionSchema,
-  updateWalletSchema,
-  createPartnerSchema
+  insertWalletSchema,
+  insertTransactionSchema,
+  creditWalletSchema,
+  debitWalletSchema,
+  transferSchema,
+  insertPartnerSchema
 } from '../schema';
 
 describe('Schema Validation', () => {
-  describe('createWalletSchema', () => {
+  describe('insertWalletSchema', () => {
     it('should validate correct wallet data', () => {
       const validWallet = {
         externalId: 'wallet-123',
@@ -16,7 +18,7 @@ describe('Schema Validation', () => {
         currency: 'USD'
       };
 
-      const result = createWalletSchema.safeParse(validWallet);
+      const result = insertWalletSchema.safeParse(validWallet);
       expect(result.success).toBe(true);
     });
 
